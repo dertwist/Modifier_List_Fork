@@ -20,13 +20,13 @@
 
 bl_info = {
     "name": "Modifier List",
-    "author": "Antti Tikka",
-    "version": (1, 8, 0),
-    "blender": (2, 92, 0),
+    "author": "Antti Tikka, Draise, Dangry",
+    "version": (1, 7, 92),
+    "blender": (4, 0, 0),
     "location": "Properties Editor & View3D > Sidebar & View3D > Alt + Spacebar",
     "description": "Alternative UI layout for modifiers with handy features "
                    "+ a Sidebar tab and a popup.",
-    "warning": "Development version",
+    "warning": "",
     "doc_url": "https://github.com/Symstract/modifier_list",
     "category": "3D View"
 }
@@ -80,11 +80,16 @@ def register():
         addon_keymaps.append((km, kmi))
 
         km = wm.keyconfigs.addon.keymaps.new(name='Property Editor', space_type='PROPERTIES')
-        kmi = km.keymap_items.new("object.ml_modifier_add_from_search", 'A', 'PRESS', ctrl=True,
-                                  shift=True)
+        kmi = km.keymap_items.new("object.ml_modifier_add_from_search", 'W', 'PRESS', ctrl=True)
         addon_keymaps.append((km, kmi))
-        kmi = km.keymap_items.new("object.ml_modifier_add_from_menu", 'A', 'PRESS', shift=True)
-        addon_keymaps.append((km, kmi))
+      
+        #not need anymore in Blender 4.0 since theres a new default shortcut and menu for this, search can be accessed by just typing
+        #km = wm.keyconfigs.addon.keymaps.new(name='Property Editor', space_type='PROPERTIES')
+        #kmi = km.keymap_items.new("object.ml_modifier_add_from_search", 'A', 'PRESS', ctrl=True,
+                                  #shift=True)
+        #addon_keymaps.append((km, kmi))
+        #kmi = km.keymap_items.new("object.ml_modifier_add_from_menu", 'A', 'PRESS', shift=True)
+        #addon_keymaps.append((km, kmi))
 
 
 def unregister():

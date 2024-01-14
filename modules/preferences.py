@@ -443,6 +443,12 @@ class Preferences(AddonPreferences):
         name="Properties Editor Style",
         description="Display modifiers inside Properties Editor as",
         update=properties_editor_style_callback)
+    
+    show_search_and_menu_bar: BoolProperty(
+        name="Show Search And Menu Bar",
+        description="Show the search and menu bar in the Properties Editor",
+        default=True,
+        update=use_properties_editor_callback)
 
     sidebar_style: EnumProperty(
         items=style_items,
@@ -638,6 +644,8 @@ class Preferences(AddonPreferences):
         split = layout.split()
         split.label(text="Properties Editor")
         split.row().prop(self, "properties_editor_style", expand=True)
+        row = layout.row()
+        layout.prop(self, "show_search_and_menu_bar")
 
         # template_modifiers() doesn't currently work outside of
         # Properties Editor, so sidebar_style and popup_style are

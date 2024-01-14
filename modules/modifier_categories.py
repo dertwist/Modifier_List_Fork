@@ -221,7 +221,8 @@ _other_show_on_cage_mods = {
     'SOLIDIFY',
     'SUBSURF',
     'TRIANGULATE',
-    'WELD'
+    'WELD',
+    'NODES',
 }
 SUPPORT_SHOW_ON_CAGE = _deform_mods.union(_other_show_on_cage_mods)
 

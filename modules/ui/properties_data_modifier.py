@@ -2022,38 +2022,7 @@ class DATA_PT_modifiers:
         layout.prop(md, "adaptivity")
         layout.prop(md, "use_smooth_shade")
 
-    def _nodes_2_93(self, layout, ob, md):
-        layout.template_ID(md, "node_group", new="node.new_geometry_node_group_assign")
-        layout.separator()
-
-        valid_node_input_names = []
-        node_input_types = []
-
-        for node_input in md.node_group.inputs:
-            if node_input.type != 'GEOMETRY':
-                valid_node_input_names.append(node_input.name)
-                node_input_types.append(node_input.type)
-
-        prop_ids = [prop_id for prop_id in md.keys()
-                    if (prop_id.startswith("Input_") and prop_id[-1].isdigit())]
-
-        identifiers_names_types = zip(prop_ids, valid_node_input_names, node_input_types)
-
-        datablock_input_info_per_type = {
-            "COLLECTION": {"data_collection": "collections", "icon": "OUTLINER_COLLECTION"},
-            "OBJECT": {"data_collection": "objects", "icon": "OBJECT_DATA"}
-        }
-
-        for prop_id, name, input_type in identifiers_names_types:
-            layout.separator(factor=0.5)
-            if input_type in datablock_input_info_per_type.keys():
-                input_info = datablock_input_info_per_type[input_type]
-                layout.prop_search(md, f'["{prop_id}"]', bpy.data, input_info["data_collection"],
-                                   text=name, icon=input_info["icon"])
-            else:
-                layout.prop(md, f'["{prop_id}"]', text=name)
-
-    def _nodes_3_0_inputs(self, layout, ob, md, split_facor):
+    def _nodes_4_0_inputs(self, layout, ob, md, split_facor):
         node_group = md.node_group
 
         if not node_group:
@@ -2086,18 +2055,22 @@ class DATA_PT_modifiers:
             )
 
         input_prop_ids = [prop_id for prop_id in md.keys()
-                          if (prop_id.startswith("Input_") and prop_id[-1].isdigit())]
+                          if (prop_id[-1].isdigit())]
 
         for i, prop_id in enumerate(input_prop_ids):
             info_per_input[i]["prop_id"] = prop_id
 
-        if BLENDER_VERSION_MAJOR_POINT_MINOR >= 3.5:
-            inputs_hide_in_modifier = [group_input.hide_in_modifier for group_input
-                                       in node_group.inputs
-                                       if group_input.type != 'GEOMETRY']
-
+        def get_inputs_hide_in_modifier(node_tree):
+            inputs_hide_in_modifier = [item.hide_in_modifier for item in node_tree.interface.items_tree
+                                       if item.item_type == 'SOCKET'
+                                       if item.in_out in {'INPUT'}
+                                       if item.socket_type != 'NodeSocketGeometry']
+                                       
             for i, hide_in_mod in enumerate(inputs_hide_in_modifier):
-                info_per_input[i]["hide_in_modifier"] = hide_in_mod
+                if i < len(info_per_input):
+                    info_per_input[i]["hide_in_modifier"] = hide_in_mod
+
+        get_inputs_hide_in_modifier(node_group)
 
         datablock_input_info_per_type = {
             "COLLECTION": {"data_collection": "collections", "icon": "OUTLINER_COLLECTION"},
@@ -2111,7 +2084,7 @@ class DATA_PT_modifiers:
             prop_id = input_info["prop_id"]
             input_type = input_info["type"]
 
-            if BLENDER_VERSION_MAJOR_POINT_MINOR >= 3.5 and input_info["hide_in_modifier"]:
+            if input_info["hide_in_modifier"]:
                 continue
 
             split = layout.split(factor=split_facor)
@@ -2140,14 +2113,15 @@ class DATA_PT_modifiers:
                         # Use a space as a label for boolean checkboxes
                         # to make alignment work.
                         text = ""
-                        if input_type == 'BOOLEAN' and BLENDER_VERSION_MAJOR_POINT_MINOR >= 3.5:
+                        if input_type == 'BOOLEAN':
                             text = " "
                         col.prop(md, f'["{prop_id}"]', text=text)
 
                     op = row.operator("object.geometry_nodes_input_attribute_toggle",
                                       text="", icon='SPREADSHEET')
-                    op.prop_path = f'[\"{prop_id}_use_attribute\"]'
+                    op.input_name = prop_id
                     op.modifier_name = md.name
+                    
                 else:
                     col = prop_row.column()
                     col.prop(md, f'["{prop_id}"]', text="")
@@ -2155,49 +2129,74 @@ class DATA_PT_modifiers:
 
             layout.separator(factor=0.5)
 
-    def _nodes_3_0_outputs(self, layout, ob, md, split_factor):
+    def _nodes_4_0_outputs(self, layout, ob, md, split_factor):
         if not md.node_group:
             return
 
-        valid_output_types = {'BOOLEAN', 'FLOAT', 'INTEGER', 'RGBA', 'VALUE', 'VECTOR'}
-        valid_node_outputs_names = [output.name for output in md.node_group.outputs
-                                    if output.type in valid_output_types]
-        output_prop_ids = [prop_id for prop_id in md.keys()
-                           if (prop_id.startswith("Output_")
-                           and prop_id.endswith("attribute_name"))]
+        valid_output_types = {'NodeSocketBool', 'NodeSocketFloat', 'NodeSocketInt', 'NodeSocketColor', 'NodeSocketVector'}
+        def get_valid_outputs_names(tree):
+            valid_outputs_names = [output.name for output in tree.interface.items_tree
+                            if output.item_type == 'SOCKET' 
+                            if output.in_out == 'OUTPUT' and output.socket_type in valid_output_types]
+            return valid_outputs_names
 
-        if not output_prop_ids:
-            return
+        valid_node_outputs_names = get_valid_outputs_names(md.node_group)
 
-        layout.label(text="Outputs")
+        
+        def get_outputs_prop_id():
+            socket_prop_ids = [prop_id for prop_id in md.keys()]
 
-        layout.separator(factor=0.5)
+            # Keep track of socket names to identify duplicates, this is a hacky way to keep track if it is an output or not since the socket output/input is not stored in the prop_id name anymore
+            socket_names = set()
+            duplicate_socket_names = set()
+            output_prop_ids = []
 
-        for prop_id, name in zip(output_prop_ids, valid_node_outputs_names):
-            split = layout.split(factor=split_factor)
-            split.label(text=name + ":")
-            row = split.row(align=True)
-            row.prop(md, f'["{prop_id}"]', text="")
-            op = row.operator("object.ml_geometry_nodes_attribute_search", text="",
-                              icon='VIEWZOOM')
-            op.property_name = f'["{prop_id}"]'
+            for prop_id in socket_prop_ids:
+                socket_name = prop_id.split('_')[1]
+
+                if socket_name in socket_names:
+                    duplicate_socket_names.add(socket_name)
+                else:
+                    # If it's the first time it get the same name, add it to the output list and the set of socket names
+                    socket_names.add(socket_name)
+                    output_prop_ids.append(prop_id)
+
+            # Remove both the names of duplicates from the list if found
+            output_prop_ids = [prop_id for prop_id in output_prop_ids if prop_id.split('_')[1] not in duplicate_socket_names]
+            
+            if not output_prop_ids:
+                return
+            
+            if valid_node_outputs_names:
+                layout.label(text="Outputs")
+
             layout.separator(factor=0.5)
 
-    def _nodes_3_0(self, layout, ob, md):
+            for prop_id, name in zip(output_prop_ids, valid_node_outputs_names):
+                split = layout.split(factor=split_factor)
+                split.label(text=name + ":")
+                row = split.row(align=True)
+                row.prop(md, f'["{prop_id}"]', text="")
+                op = row.operator("object.ml_geometry_nodes_attribute_search", text="",
+                                icon='VIEWZOOM')
+                op.property_name = f'["{prop_id}"]'
+                layout.separator(factor=0.5)
+
+        get_outputs_prop_id()
+
+
+    def _nodes_4_0(self, layout, ob, md):
         layout.template_ID(md, "node_group", new="node.new_geometry_node_group_assign")
 
         layout.separator()
 
         split_factor = 0.4
 
-        self._nodes_3_0_inputs(layout, ob, md, split_factor)
+        self._nodes_4_0_inputs(layout, ob, md, split_factor)
 
         layout.separator()
 
-        self._nodes_3_0_outputs(layout, ob, md, split_factor)
+        self._nodes_4_0_outputs(layout, ob, md, split_factor)
 
     def NODES(self, layout, ob, md):
-        if BLENDER_VERSION_MAJOR_POINT_MINOR < 3.0:
-            self._nodes_2_93(layout, ob, md)
-        else:
-            self._nodes_3_0(layout, ob, md)
+        self._nodes_4_0(layout, ob, md)

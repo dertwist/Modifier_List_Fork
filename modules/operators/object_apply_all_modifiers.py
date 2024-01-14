@@ -167,43 +167,43 @@ class VIEW3D_OT_ml_apply_all_modifiers(Operator):
             if ml_act_ob not in obs:
                 obs.append(ml_act_ob)
 
-        override = context.copy()
-
         for ob in obs:
-            override['object'] = ob
-            data = ob.data
-            mods = ob.modifiers
+            with context.temp_override(id=ob):
+                data = ob.data
+                mods = ob.modifiers
 
-            # Skip linked objects with no library override and local
-            # data.
-            if ob.library or (ob.override_library and (data.library or data.override_library)):
-                self.skipped_objects_with_non_local_data = True
-                continue
-
-            self.objects_have_local_data = True
-
-            for mod in mods:
-                self.objects_have_modifiers = True
-
-                if disallow_applying_hidden_modifiers and not mod.show_viewport:
+                # Skip linked objects with no library override and local
+                # data.
+                if ob.library or (ob.override_library and (data.library or data.override_library)):
+                    self.skipped_objects_with_non_local_data = True
                     continue
 
-                # Only try to apply local modifiers
-                if not ob.override_library or mod.is_property_overridable_library("name"):
-                    try:
-                        bpy.ops.object.modifier_apply(override, modifier=mod.name)
-                    except:
-                        if ob.name not in self.ojects_with_modifiers_failed_to_apply:
-                            self.ojects_with_modifiers_failed_to_apply.append(ob.name)
-                    self.objects_have_local_modifiers = True
-                else:
-                    self.skipped_linked_modifiers = True
+                self.objects_have_local_data = True
 
-            # Make sure some modifier is always active even if all
-            # modifiers can't be applied
-            mods_len = len(mods) - 1
-            new_index = np.clip(mods_len, 0, 99)
-            ob.ml_modifier_active_index = new_index
+                for mod in mods:
+                    self.objects_have_modifiers = True
+
+                    if disallow_applying_hidden_modifiers and not mod.show_viewport:
+                        continue
+
+                    # Only try to apply local modifiers
+                    if not ob.override_library or mod.is_property_overridable_library("name"):
+                        try:
+                            with context.temp_override(id=ob):
+                                bpy.ops.object.modifier_apply(modifier=mod.name)
+                        except:
+                            if ob.name not in self.objects_with_modifiers_failed_to_apply:
+                                self.objects_with_modifiers_failed_to_apply.append(ob.name)
+                        self.objects_have_local_modifiers = True
+                    else:
+                        self.skipped_linked_modifiers = True
+
+                # Make sure some modifier is always active even if all
+                # modifiers can't be applied
+                mods_len = len(mods) - 1
+                new_index = np.clip(mods_len, 0, 99)
+                ob.ml_modifier_active_index = new_index
+
 
     def check_for_applied_modifiers_and_report(self):
         if not self.objects_have_local_data:

@@ -571,24 +571,134 @@ class OBJECT_MT_ml_add_modifier_menu(Menu):
             _modifier_menu_volume(row)
 
 
-class OBJECT_UL_ml_modifier_list(UIList):
+def draw_time_props(self, context):
+    layout = self.layout
+    
+    if bpy.context.space_data.context == 'MODIFIER':
+        layout.separator()
+        row = layout.row()
+        row.prop(bpy.context.scene, "show_timings", text="Show Timings")
+        row.prop(bpy.context.scene, "compact_timing", text="In Seconds")
+        row = layout.row()
+        row.prop(bpy.context.scene, "total_time", text="Show Total Time")
 
+def time_to_string(t):
+    if bpy.context.scene.compact_timing == False:
+        #if modifer is disabled, show 0.0 ms
+        if t == 0.0015:
+            return f'0.0 ms'
+        # Formats time in seconds to the nearest sensible unit
+        units = {3600.: 'h', 60.: 'm', 1.: 's', .001: 'ms'}
+        for factor in units.keys():
+            if t >= factor:
+                return f'{t/factor:.3g} {units[factor]}'
+
+        if t >= 1e-4:
+            return f'{t/factor:.3g} {units[factor]}'
+        else:
+            return f'<0.1 ms'
+    else:
+        #if modifer is disabled, show 0.0s
+        if t == 0.0015:
+            return f'0.0s'
+        # Format it to only .s if under a minute with max one decimal
+        if t < 60:
+            if t < 0.1:
+                if t < 0.01:
+                    return f'<.01s'
+                else:
+                #round to 2 decimals instead of 1
+                    return str(round(t, 2)) + "s"
+    
+            elif t < 10:
+                return str(round(t, 1)) + "s"
+            else:
+                return str(round(t, 1)) + "s"
+        elif t < 3600:
+            return str(round(t/60, 0)) + "min"
+        else:
+            return str(round(t/3600, 0)) + "h"
+
+
+def _get_all_modifier_times():
+    global prev_ms_times
+
+    depsgraph = bpy.context.view_layer.depsgraph
+    ob_eval = bpy.context.object.evaluated_get(depsgraph)
+
+    if bpy.context.scene.total_time:
+        times = []
+        total = 0
+        for mod_eval in ob_eval.modifiers:
+            t = _get_modifier_times(mod_eval)
+            times += [t]
+            total += t
+        total_text = 'Total:'
+        total_time = total_text + ' ' + time_to_string(sum(times))
+        return total_time
+    
+    
+prev_ms_times = {}
+
+def _get_modifier_times(mod):
+    global prev_ms_times
+    
+    depsgraph = bpy.context.view_layer.depsgraph
+    ob_eval = bpy.context.object.evaluated_get(depsgraph)
+
+    ms_times = ob_eval.modifiers[mod.name].execution_time
+
+    if not mod.show_viewport or not mod.show_in_editmode and bpy.context.mode == 'EDIT_MESH':
+        #the number when a modifier is disabled and should be 0.0 ms
+        ms_times = 0.0015
+    else:
+        if ms_times >= 1e-4:
+            obj_name = bpy.context.object.name
+            if obj_name not in prev_ms_times:
+                prev_ms_times[obj_name] = {}
+            prev_ms_times[obj_name][mod.name] = ms_times
+        else:
+            obj_name = bpy.context.object.name
+            if obj_name in prev_ms_times and mod.name in prev_ms_times[obj_name]:
+                ms_times = prev_ms_times[obj_name][mod.name]
+    return ms_times
+    
+
+class OBJECT_UL_modifier_list(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
         mod = item
+        if bpy.context.scene.show_timings:
+                text = _get_modifier_times(mod)
+                text = time_to_string(text)
+        else:
+            text = ""
 
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            if mod:
+            if mod:       
                 row = layout.row()
                 row.alert = is_modifier_disabled(mod)
                 row.label(text="", translate=False, icon_value=layout.icon(mod))
-                layout.prop(mod, "name", text="", emboss=False)
+                layout.prop(mod, "name", text=text, emboss=False)
                 _modifier_visibility_buttons(mod, layout, get_icons(), use_in_list=True)
-            else:
+            else:   
                 layout.label(text="", translate=False, icon_value=icon)
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
             layout.label(text="", icon_value=icon)
+
+
+    def register():
+        bpy.types.Scene.show_timings = bpy.props.BoolProperty(default=False)
+        bpy.types.Scene.compact_timing = bpy.props.BoolProperty(default=False)
+        bpy.types.Scene.total_time = bpy.props.BoolProperty(default=False)
+        bpy.types.PROPERTIES_PT_options.append(draw_time_props)
+        
+    def unregister():
+        bpy.types.PROPERTIES_PT_options.remove(draw_time_props)
+        del bpy.types.Scene.show_timings
+        del bpy.types.Scene.compact_timing
+        del bpy.types.Scene.total_time
 
 
 class ModifierExtrasBase:
@@ -726,12 +836,20 @@ def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=Fals
     col = layout.column(align=True)
     _favourite_modifier_buttons(col)
 
-    # === Modifier search and menu ===
-    col = layout.column()
-    _modifier_search_and_menu(col, ob)
+
+    # # === Modifier search and menu ===
+    if prefs.show_search_and_menu_bar:
+        col = layout.column()
+        _modifier_search_and_menu(col, ob)
+
+
+    # === Total Timing Text ===
+    if bpy.context.scene.total_time:
+        col.label(text=_get_all_modifier_times())
+
 
     # === Modifier list ===
-    layout.template_list("OBJECT_UL_ml_modifier_list", "", ob, "modifiers",
+    layout.template_list("OBJECT_UL_modifier_list", "", ob, "modifiers",
                          ob, "ml_modifier_active_index", rows=num_of_rows,
                          sort_reverse=prefs.reverse_list)
 
@@ -772,6 +890,12 @@ def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=Fals
         sub.operator("object.ml_modifier_move_up", icon=move_up_icon, text="")
 
     sub.operator("object.ml_modifier_remove", icon='REMOVE', text="")
+
+    col = layout.column()
+    # === if no modifiers on active object, text "no modifiers, add with shift a" ===   
+    if not prefs.show_search_and_menu_bar:
+        if not ob.modifiers:
+            col.label(text="Add New Modifier Shift + A")
 
     # === Modifier settings ===
     if not ob.modifiers:
@@ -884,15 +1008,20 @@ def modifiers_ui_with_stack(context, layout, use_in_popup=False):
     _favourite_modifier_buttons(col)
 
     # === Modifier search and menu and modifier extras menu ===
-    col = layout.column()
-    row = _modifier_search_and_menu(col, ob)
-    _modifier_extras_button(context, row, use_in_popup=use_in_popup)
+    if prefs.show_search_and_menu_bar:
+        col = layout.column()
+        row = _modifier_search_and_menu(col, ob)
+        _modifier_extras_button(context, row, use_in_popup=use_in_popup)
+
 
     # === Modifier batch operators ===
     if prefs.show_batch_ops_in_main_layout_with_stack_style:
         row = layout.row(align=True)
         row.scale_x = 50
         _batch_operators(row, pcoll, use_with_stack=True)
+    if not prefs.show_search_and_menu_bar:
+        if not ob.modifiers:
+            layout.label(text="Add New Modifier Shift + A")
 
     # === Modifier stack ===
     layout.template_modifiers()
