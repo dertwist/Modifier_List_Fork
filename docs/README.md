@@ -4,7 +4,7 @@
 
 ---
 
-[Download the latest release from here]([https://github.com/Symstract/Modifier-List/releases](https://github.com/Dangry98/modifier_list-for-Blender-4.0/releases))
+Download the latest release from here: https://github.com/Dangry98/modifier_list-for-Blender-4.0/releases
 
 [Changelog](/CHANGELOG.md)
 
