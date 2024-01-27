@@ -7,7 +7,7 @@
 
 [Changelog](/CHANGELOG.md)
 
-[Blender Artists Thread](https://blenderartists.org/t/modifier-popup-panel-list-view-search-favourites/1147752)
+[Blender Artists Thread](https://blenderartists.org/t/modifier-list-for-blender-4-0-fork/1512291)
 
 ---
 
