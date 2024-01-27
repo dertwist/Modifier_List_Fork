@@ -1,5 +1,18 @@
 # Changelog
 
+## Modifier List 1.7.92 - 14.1.2024
+
+New features:
+- Support for geometry nodes in Blender 4.0!
+- Option to see how much time it takes to execute each modifier. (only works in list mode)
+- Added an option to hide the search and add modifier button for a cleaner look.
+- Shift Left-click on the Toggle Visibility of All Modifiers button will only toggles on and off the currently visible modifiers.
+
+Bug fixes:
+- Reverse list is now working again (restart still required though).
+- Various bug fixes with geometry nodes.
+- Apply All Modifiers now works for the active object.
+
 ## 1.7.5 - 17.4.2023
 
 - Curves object is now supported
