@@ -3,6 +3,17 @@
 ### Enhanced UI layout for modifiers with handy features. Available also in the sidebar and as a popup.
 
 ---
+New features:
+- Support for geometry nodes in Blender 4.0!
+- Option to see how much time it takes to execute each modifier. (only works in list mode)
+- Added an option to hide the search and add modifier button for a cleaner look.
+- Shift Left-click on the Toggle Visibility of All Modifiers button will only toggles on and off the currently visible modifiers.
+
+Bug fixes:
+- Reverse list is now working again (restart still required though).
+- Various bug fixes with geometry nodes.
+- Apply All Modifiers now works for the active object.
+
 
 Download the latest release from here: https://github.com/Dangry98/modifier_list-for-Blender-4.0/releases
 
