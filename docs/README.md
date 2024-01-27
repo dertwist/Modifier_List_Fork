@@ -3,7 +3,7 @@
 ### Enhanced UI layout for modifiers with handy features. Available also in the sidebar and as a popup.
 ---
 
-Download the latest release from here: https://github.com/Dangry98/modifier_list-for-Blender-4.0/releases
+[Download the latest release from here](https://github.com/Dangry98/modifier_list-for-Blender-4.0/releases)
 
 [Changelog](/CHANGELOG.md)
 
