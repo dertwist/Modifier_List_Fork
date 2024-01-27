@@ -265,7 +265,7 @@ class ML_PreferencesUIProperties(PropertyGroup):
 
 class ML_WindowManagerProperties(PropertyGroup):
     modifier_to_add_from_search: StringProperty(
-        name="Modifier to add",
+        name="Search for Modifier",
         update=add_modifier,
         description="Search for a modifier and add it to the stack")
     all_modifiers: CollectionProperty(type=AllModifiersCollection)

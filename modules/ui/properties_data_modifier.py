@@ -2079,55 +2079,109 @@ class DATA_PT_modifiers:
             "OBJECT": {"data_collection": "objects", "icon": "OBJECT_DATA"},
             "TEXTURE": {"data_collection": "textures", "icon": "TEXTURE"},
         }
+        def get_socket_prop_id(input_info):
+                prop_id = input_info["prop_id"]
+                input_type = input_info["type"]
 
-        for input_info in info_per_input:
-            prop_id = input_info["prop_id"]
-            input_type = input_info["type"]
-
-            if input_info["hide_in_modifier"]:
-                continue
-
-            split = layout.split(factor=split_facor)
-            split.label(text=input_info["name"] + ":")
-
-            row = split.row(align=True)
-            prop_row = row.row(align=True)
-
-            if input_type in datablock_input_info_per_type.keys():
-                datablock_input_info = datablock_input_info_per_type[input_type]
-                prop_row.prop_search(md, f'["{prop_id}"]', bpy.data,
-                                     datablock_input_info["data_collection"],
-                                     text="", icon=datablock_input_info["icon"])
-                row.label(text="", icon='BLANK1')
-
-            else:
-                if input_info["accepts_attribute"]:
-                    if md[f"{prop_id}_use_attribute"] == 1:
-                        attr_prop_name = f'["{prop_id}_attribute_name"]'
-                        prop_row.prop(md, attr_prop_name, text="")
-                        op = prop_row.operator("object.ml_geometry_nodes_attribute_search",
-                                               text="", icon='VIEWZOOM')
-                        op.property_name = attr_prop_name
-                    else:
-                        col = prop_row.column()
-                        # Use a space as a label for boolean checkboxes
-                        # to make alignment work.
-                        text = ""
-                        if input_type == 'BOOLEAN':
-                            text = " "
-                        col.prop(md, f'["{prop_id}"]', text=text)
-
-                    op = row.operator("object.geometry_nodes_input_attribute_toggle",
-                                      text="", icon='SPREADSHEET')
-                    op.input_name = prop_id
-                    op.modifier_name = md.name
+                if input_info["hide_in_modifier"]:
+                    return
                     
-                else:
-                    col = prop_row.column()
-                    col.prop(md, f'["{prop_id}"]', text="")
+                split = layout.split(factor=split_facor)
+                split.label(text=input_info["name"] + ":")
+
+                row = split.row(align=True)
+                prop_row = row.row(align=True)
+
+                if input_type in datablock_input_info_per_type.keys():
+                    datablock_input_info = datablock_input_info_per_type[input_type]
+                    prop_row.prop_search(md, f'["{prop_id}"]', bpy.data,
+                                        datablock_input_info["data_collection"],
+                                        text="", icon=datablock_input_info["icon"])
                     row.label(text="", icon='BLANK1')
 
-            layout.separator(factor=0.5)
+                else:
+                    if input_info["accepts_attribute"]:
+                        if md[f"{prop_id}_use_attribute"] == 1:
+                            attr_prop_name = f'["{prop_id}_attribute_name"]'
+                            prop_row.prop(md, attr_prop_name, text="")
+                            op = prop_row.operator("object.ml_geometry_nodes_attribute_search",
+                                                text="", icon='VIEWZOOM')
+                            op.property_name = attr_prop_name
+                        else:
+                            col = prop_row.column()
+                            # Use a space as a label for boolean checkboxes to make alignment work.
+                            text = ""
+                            if input_type == 'BOOLEAN':
+                                text = " "
+                            col.prop(md, f'["{prop_id}"]', text=text)
+
+                        op = row.operator("object.geometry_nodes_input_attribute_toggle",
+                                        text="", icon='SPREADSHEET')
+                        op.input_name = prop_id
+                        op.modifier_name = md.name
+                        
+                    else:
+                        col = prop_row.column()
+                        col.prop(md, f'["{prop_id}"]', text="")
+                        row.label(text="", icon='BLANK1')
+                layout.separator(factor=0.5)
+        
+        def get_node_panels(tree):
+            return [item.name for item in tree.interface.items_tree if item.item_type == 'PANEL']
+
+        def get_socket_and_parent_name(tree):
+            return [item.parent.name if item.parent.name else 'no_panel' for item in tree.interface.items_tree if item.item_type == 'SOCKET' and item.in_out == 'INPUT' and item.socket_type != 'NodeSocketGeometry']
+
+        def tree_socket_or_panel_order(node_tree):
+            socket_panel_list = []
+            for item in node_tree.interface.items_tree:
+                if item.item_type == 'SOCKET' and item.in_out == 'INPUT' and item.socket_type != 'NodeSocketGeometry':
+                    socket_panel_list.append('SOCKET')
+                elif item.item_type == 'PANEL':
+                    socket_panel_list.append('PANEL')
+            return socket_panel_list
+
+        def is_panel_default_closed(node_tree):
+            return any(item.default_closed for item in node_tree.interface.items_tree if item.item_type == 'PANEL')
+
+        all_panel_name_list = get_node_panels(node_group)
+        amount_of_panels = len(all_panel_name_list)
+        socket_has_panel_and_panel_name = get_socket_and_parent_name(node_group)
+        socket_panel_list = tree_socket_or_panel_order(node_group)
+        panel_id = 0
+        removed_sockets = [] 
+        current_item = -1
+
+        if BLENDER_VERSION_MAJOR_POINT_MINOR > 4.0:
+            for item in socket_panel_list:
+                if item == 'SOCKET':
+                    current_item += 1
+
+                if item == 'SOCKET' and socket_has_panel_and_panel_name[current_item] == 'no_panel':
+                    if info_per_input:
+                        get_socket_prop_id(info_per_input.pop(0))
+                        
+                elif item == 'PANEL':
+                      
+                    header, panel = layout.panel(idname=all_panel_name_list[panel_id], default_closed=is_panel_default_closed(node_group))
+                    header.label(text=all_panel_name_list[panel_id])
+                    panel_open = bool(panel)
+
+                    if panel_open:
+                        num_sockets_in_panel = sum(1 for item in node_group.interface.items_tree if item.item_type == 'SOCKET' and item.parent.name == all_panel_name_list[panel_id])
+                        for i in range(num_sockets_in_panel):
+                            if info_per_input:
+                                get_socket_prop_id(info_per_input.pop(0))
+                        removed_sockets.append(num_sockets_in_panel)
+                    else:
+                        num_sockets_in_panel = sum(1 for item in node_group.interface.items_tree if item.item_type == 'SOCKET' and item.parent.name == all_panel_name_list[panel_id])
+                        info_per_input = info_per_input[num_sockets_in_panel:]
+
+                    panel_id = (panel_id + 1) % amount_of_panels
+        else:
+            for item in socket_panel_list:
+                if info_per_input:
+                    get_socket_prop_id(info_per_input.pop(0))
 
     def _nodes_4_0_outputs(self, layout, ob, md, split_factor):
         if not md.node_group:
@@ -2142,6 +2196,16 @@ class DATA_PT_modifiers:
 
         valid_node_outputs_names = get_valid_outputs_names(md.node_group)
 
+        def output_prop_names(output_prop_ids):
+            for prop_id, name in zip(output_prop_ids, valid_node_outputs_names):
+                        split = layout.split(factor=split_factor)
+                        split.label(text=name + ":")
+                        row = split.row(align=True)
+                        row.prop(md, f'["{prop_id}"]', text="")
+                        op = row.operator("object.ml_geometry_nodes_attribute_search", text="",
+                                        icon='VIEWZOOM')
+                        op.property_name = f'["{prop_id}"]'
+                        layout.separator(factor=0.5)
         
         def get_outputs_prop_id():
             socket_prop_ids = [prop_id for prop_id in md.keys()]
@@ -2164,27 +2228,49 @@ class DATA_PT_modifiers:
             # Remove both the names of duplicates from the list if found
             output_prop_ids = [prop_id for prop_id in output_prop_ids if prop_id.split('_')[1] not in duplicate_socket_names]
             
-            if not output_prop_ids:
-                return
-            
+            #if not output_prop_ids:
+                #return
+           
             if valid_node_outputs_names:
-                layout.label(text="Outputs")
+                if BLENDER_VERSION_MAJOR_POINT_MINOR > 4.0:
+                    header, panel = layout.panel(idname="Outputs", default_closed=False)
+                    header.label(text="Outputs")
 
-            layout.separator(factor=0.5)
+                    if panel:            
+                        output_prop_names(output_prop_ids)
+                else:
+                    output_prop_names(output_prop_ids)           
 
-            for prop_id, name in zip(output_prop_ids, valid_node_outputs_names):
-                split = layout.split(factor=split_factor)
-                split.label(text=name + ":")
-                row = split.row(align=True)
-                row.prop(md, f'["{prop_id}"]', text="")
-                op = row.operator("object.ml_geometry_nodes_attribute_search", text="",
-                                icon='VIEWZOOM')
-                op.property_name = f'["{prop_id}"]'
-                layout.separator(factor=0.5)
+            def bake_directory():
+                row = layout.split(factor = 0.175)
+                row.label(text="Bake Path")
+                get_active_modifier = ob.modifiers.get(md.name)
+                
+                if not hasattr(get_active_modifier, "bake_directory"):
+                    get_active_modifier.bake_directory = bpy.props.StringProperty(name="Bake Directory", default="")
+                row.prop(get_active_modifier, "bake_directory", text="")
+            
+            def named_attributes():
+                layout.label(text="Named Attributes WIP")    
 
+
+            if BLENDER_VERSION_MAJOR_POINT_MINOR > 4.0:   
+                header, panel_manage = layout.panel(idname="Manage",  default_closed=True)
+                header.label(text="Manage")
+                if panel_manage:
+                    header, panel_bake = layout.panel(idname="Bake", default_closed=True)
+                    header.label(text="Bake")
+
+                    if panel_bake:
+                        bake_directory()
+
+                    header, panel_named_attributes = layout.panel(idname="Named Attributes", default_closed=True)
+                    header.label(text="Named Attributes")
+                    if panel_named_attributes:
+                        named_attributes()
+                        
         get_outputs_prop_id()
-
-
+        
     def _nodes_4_0(self, layout, ob, md):
         layout.template_ID(md, "node_group", new="node.new_geometry_node_group_assign")
 
@@ -2193,8 +2279,6 @@ class DATA_PT_modifiers:
         split_factor = 0.4
 
         self._nodes_4_0_inputs(layout, ob, md, split_factor)
-
-        layout.separator()
 
         self._nodes_4_0_outputs(layout, ob, md, split_factor)
 
