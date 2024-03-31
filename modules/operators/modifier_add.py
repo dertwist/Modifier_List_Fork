@@ -28,8 +28,6 @@ class OBJECT_OT_ml_modifier_add(Operator):
     def execute(self, context):
         ob = get_ml_active_object()
 
-        self.add_modifier_pre_step(ob)
-
         # Store initial active_index
         init_active_mod_index = ob.ml_modifier_active_index
 
@@ -99,10 +97,6 @@ class OBJECT_OT_ml_modifier_add(Operator):
         self.alt = event.alt
 
         return self.execute(context)
-
-    def add_modifier_pre_step(self, object):
-        if self.modifier_type in {'NORMAL_EDIT', 'WEIGHTED_NORMAL'}:
-            object.data.use_auto_smooth = True
 
     def set_modifier_default_settings(self):
         mod = get_ml_active_object().modifiers[-1]

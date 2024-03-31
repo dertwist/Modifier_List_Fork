@@ -21,7 +21,7 @@
 bl_info = {
     "name": "Modifier List",
     "author": "Antti Tikka, Draise, Dangry",
-    "version": (1, 7, 95),
+    "version": (1, 7, 96),
     "blender": (4, 0, 0),
     "location": "Properties Editor & View3D > Sidebar & View3D > Alt + Spacebar",
     "description": "Alternative UI layout for modifiers with handy features "
