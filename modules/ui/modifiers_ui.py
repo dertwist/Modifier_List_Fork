@@ -700,6 +700,18 @@ class OBJECT_UL_modifier_list(UIList):
         del bpy.types.Scene.compact_timing
         del bpy.types.Scene.total_time
 
+class ShowNodeGroupInModifiersList(bpy.types.Operator):
+    bl_idname = "object.geometry_node_show_node_group"
+    bl_label = "Show Node Group"
+
+    def execute(self, context):
+        active_mod_index = context.object.ml_modifier_active_index
+        if context.object.type == 'MESH':
+            if bpy.context.object.modifiers[active_mod_index].show_group_selector == False:
+                bpy.context.object.modifiers[active_mod_index].show_group_selector = True
+            else:
+                bpy.context.object.modifiers[active_mod_index].show_group_selector = False
+        return {'FINISHED'}
 
 class ModifierExtrasBase:
     bl_label = "Modifier Extras"
@@ -764,6 +776,10 @@ class ModifierExtrasBase:
                 if BLENDER_VERSION_MAJOR_POINT_MINOR >= 3.5:
                     if active_mod.type == 'NODES' and active_mod.node_group:
                         col.operator("object.geometry_nodes_move_to_nodes")
+                        col.operator("object.geometry_node_show_node_group")
+                    col.prop(active_mod, "object.modifiers_show_group_selector")
+                    
+
                 col.operator("object.modifier_copy_to_selected").modifier = active_mod.name
             else:
                 row = layout.row()

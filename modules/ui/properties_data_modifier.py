@@ -2272,7 +2272,10 @@ class DATA_PT_modifiers:
         get_outputs_prop_id()
         
     def _nodes_4_0(self, layout, ob, md):
-        layout.template_ID(md, "node_group", new="node.new_geometry_node_group_assign")
+        active_mod = ob.modifiers[ob.ml_modifier_active_index] if ob.modifiers else None
+        
+        if active_mod.type == 'NODES' and active_mod.show_group_selector == True:
+            layout.template_ID(md, "node_group", new="node.new_geometry_node_group_assign")
 
         layout.separator()
 
