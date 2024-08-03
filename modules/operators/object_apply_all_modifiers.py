@@ -9,6 +9,7 @@ import numpy as np
 import bpy
 from bpy.props import *
 from bpy.types import Operator
+from ... import __package__ as base_package
 
 from ..multiuser_data_modifier_apply_utils import LinkedObjectDataChanger
 from ..utils import get_ml_active_object
@@ -124,7 +125,7 @@ class VIEW3D_OT_ml_apply_all_modifiers(Operator):
         if self.multi_user_data_apply_method == 'APPLY_TO_ALL':
             self.linked_object_data_changer.assign_new_data_to_other_instances()
 
-        prefs = bpy.context.preferences.addons["modifier_list"].preferences
+        prefs = bpy.context.preferences.addons[base_package].preferences
 
         # Info messages for when some modifiers were applied
         if self.ojects_with_modifiers_failed_to_apply:
@@ -138,7 +139,7 @@ class VIEW3D_OT_ml_apply_all_modifiers(Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        prefs = bpy.context.preferences.addons["modifier_list"].preferences
+        prefs = bpy.context.preferences.addons[base_package].preferences
         global disallow_applying_hidden_modifiers
         disallow_applying_hidden_modifiers = (
             not prefs.disallow_applying_hidden_modifiers if event.alt

@@ -12,10 +12,13 @@ class OBJECT_OT_ml_modifier_move_down(Operator):
     bl_label = "Move Modifier"
     bl_description = ("Move modifier up/down in the stack.\n"
                       "\n"
-                      "Hold Shift to move it to the top/bottom")
+                      "Hold Shift to move it to the top/bottom"
+                      "\n"
+                      "Hold Alt to do it for all selected objects")
     bl_options = {'REGISTER', 'INTERNAL', 'UNDO'}
 
     move_to_end: BoolProperty(name="Move to End", options={'HIDDEN', 'SKIP_SAVE'})
+    selected_objects: BoolProperty(name="Use Selected Objects", options={'HIDDEN', 'SKIP_SAVE'})
 
     @classmethod
     def poll(cls, ontext):
@@ -53,18 +56,21 @@ class OBJECT_OT_ml_modifier_move_down(Operator):
         mods_max_index = len(ml_active_ob.modifiers) - 1
 
         if self.move_to_end:
-            bpy.ops.object.modifier_move_to_index(modifier=active_mod_name,
-                                                  index=mods_max_index)
+            bpy.ops.object.modifier_move_to_index(use_selected_objects=self.selected_objects, modifier=active_mod_name, index=mods_max_index)
             ml_active_ob.ml_modifier_active_index = mods_max_index
         else:
             with context.temp_override(id=ml_active_ob): ### Draise - added "with" for Blender 4.0.0 compatibility
-                bpy.ops.object.modifier_move_down(modifier=active_mod_name)
+                bpy.ops.object.modifier_move_to_index(use_selected_objects=self.selected_objects, modifier=active_mod_name, index=active_mod_index + 1)
+
                 ml_active_ob.ml_modifier_active_index = np.clip(active_mod_index + 1, 0, mods_max_index)
 
         return {'FINISHED'}
 
+
     def invoke(self, context, event):
         if event.shift:
             self.move_to_end = True
+        if event.alt:
+            self.selected_objects = True
 
         return self.execute(context)

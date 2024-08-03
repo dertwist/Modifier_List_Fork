@@ -6,6 +6,7 @@ from .modifiers_ui import modifiers_ui_with_list, modifiers_ui_with_stack
 from .ui_common import pin_object_button
 from .vertex_groups_ui import vertex_groups_ui
 from ..utils import get_ml_active_object, object_type_has_modifiers
+from ... import __package__ as base_package
 
 
 class VIEW3D_OT_ml_modifier_popup(Operator):
@@ -17,7 +18,7 @@ class VIEW3D_OT_ml_modifier_popup(Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        prefs = bpy.context.preferences.addons["modifier_list"].preferences
+        prefs = bpy.context.preferences.addons[base_package].preferences
 
         self.panel_width = prefs.popup_width
         TABS_WIDTH = 26
@@ -46,7 +47,7 @@ class VIEW3D_OT_ml_modifier_popup(Operator):
         ml_props = bpy.context.window_manager.modifier_list
         popup_tab = ml_props.popup_active_tab
 
-        prefs = bpy.context.preferences.addons["modifier_list"].preferences
+        prefs = bpy.context.preferences.addons[base_package].preferences
 
         # Don't add a label when props_dialog is used, avoiding
         # wasting space.

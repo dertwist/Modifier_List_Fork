@@ -7,8 +7,7 @@ _mods_enum = bpy.types.Modifier.bl_rna.properties['type'].enum_items
 # There's' a modifier called "Surface" which needs to be filtered out
 # because it's not meant to be seen by users.
 ALL_MODIFIERS_NAMES_ICONS_TYPES = [(mod.name, mod.icon, mod.identifier) for mod in _mods_enum
-                                   if mod.name != "Surface"]
-
+                                   if mod.name != "Surface" and "GREASE_PENCIL" not in mod.identifier]
 
 # === All modifier by categories ===
 _mods = ALL_MODIFIERS_NAMES_ICONS_TYPES

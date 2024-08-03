@@ -2,6 +2,7 @@ import os
 
 import bpy
 from bpy.utils import previews
+from .. import __package__ as base_package
 
 
 _preview_collections = {}
@@ -27,7 +28,7 @@ def load_icons():
     # === Load new icons ===
     pcoll = previews.new()
 
-    prefs = bpy.context.preferences.addons["modifier_list"].preferences
+    prefs = bpy.context.preferences.addons[base_package].preferences
     color = prefs.icon_color
 
     icons_dir = os.path.join(os.path.dirname(__file__), os.path.pardir, "icons", color)

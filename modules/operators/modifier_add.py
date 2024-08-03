@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import *
 from bpy.types import Operator
+from ... import __package__ as base_package
 
 from ..modifier_categories import ALL_MODIFIERS_NAMES_ICONS_TYPES, HAVE_GIZMO_PROPERTY
 from ..utils import get_ml_active_object, assign_gizmo_object_to_modifier
@@ -12,10 +13,13 @@ class OBJECT_OT_ml_modifier_add(Operator):
     bl_description = ("Hold shift to add the modifier with a gizmo object (for certain modifiers).\n"
                       "\n"
                       "Placement:\n"
-                      "Alt: world origin.\n"
+                      "Ctrl: world origin.\n"
                       "If in Edit Mode and there is a selection: the average location of "
                       "the selected elements.\n"
-                      "Else: active object's origin")
+                      "Else: active object's origin. \n"
+                      "\n"
+                      "Alt: add the modifier on all selected objects.")
+
     bl_options = {'REGISTER', 'INTERNAL', 'UNDO'}
 
     modifier_type: StringProperty(options={'HIDDEN'})
@@ -41,7 +45,7 @@ class OBJECT_OT_ml_modifier_add(Operator):
         ### Draise - Added the "with" for compatibility with 4.0.0
         try:
             with context.temp_override(id=ob): 
-                bpy.ops.object.modifier_add(type=self.modifier_type)
+                bpy.ops.object.modifier_add('INVOKE_DEFAULT', type=self.modifier_type)
         except TypeError:
             for mod in ALL_MODIFIERS_NAMES_ICONS_TYPES:
                 if mod[2] == self.modifier_type:
@@ -65,7 +69,7 @@ class OBJECT_OT_ml_modifier_add(Operator):
 
         if self.shift and ob.type in {'CURVE', 'FONT', 'LATTICE', 'MESH', 'SURFACE'}:
             if mod.type in HAVE_GIZMO_PROPERTY or mod.type == 'UV_PROJECT':
-                placement = 'WORLD_ORIGIN' if self.alt else 'OBJECT'
+                placement = 'WORLD_ORIGIN' if self.ctrl else 'OBJECT'
                 assign_gizmo_object_to_modifier(self, context, mod.name, placement=placement)
 
         # === Move modifier into place ===
@@ -79,7 +83,7 @@ class OBJECT_OT_ml_modifier_add(Operator):
         if ob.override_library:
             return {'FINISHED'}
 
-        prefs = bpy.context.preferences.addons["modifier_list"].preferences
+        prefs = bpy.context.preferences.addons[base_package].preferences
         move = not self.ctrl if prefs.insert_modifier_after_active else self.ctrl
 
         if move:
@@ -101,10 +105,14 @@ class OBJECT_OT_ml_modifier_add(Operator):
     def set_modifier_default_settings(self):
         mod = get_ml_active_object().modifiers[-1]
         mod_type = mod.type
-        prefs = bpy.context.preferences.addons["modifier_list"].preferences
+        is_pin_to_last = False
+        # if mod.use_pin_to_last == True:
+        #     is_pin_to_last = True            
+
+        prefs = bpy.context.preferences.addons[base_package].preferences
         defaults_group = getattr(prefs.modifier_defaults, mod.type)
         defaults = [(attr, getattr(defaults_group, attr))
-                    for attr in defaults_group.__annotations__]
+                    for attr in defaults_group.__annotations__] 
 
         for setting, value in defaults:
             # Some setting are synched, so the other one would override
@@ -128,5 +136,8 @@ class OBJECT_OT_ml_modifier_add(Operator):
 
                 if setting == "factor" and deform_method not in {'TAPER', 'STRETCH'}:
                     continue
+        
+        # if is_pin_to_last == True:
+        #     mod.use_pin_to_last = True
 
             setattr(mod, setting, value)

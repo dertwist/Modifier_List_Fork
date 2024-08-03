@@ -11,7 +11,7 @@ class OBJECT_OT_ml_gizmo_object_add(Operator):
                       "\n"
                       "Placement:\n"
                       "Shift: 3D Cursor.\n"
-                      "Alt: world origin.\n"
+                      "Ctrl: world origin.\n"
                       "If in Edit Mode and there is a selection: the average location of "
                       "the selected elements.\n"
                       "Else: active object's origin")
@@ -22,17 +22,17 @@ class OBJECT_OT_ml_gizmo_object_add(Operator):
     def execute(self, context):
         if self.shift:
             placement = 'CURSOR'
-        elif self.alt:
+        elif self.ctrl:
             placement = 'WORLD_ORIGIN'
         else:
             placement = 'OBJECT'
-
+        
         assign_gizmo_object_to_modifier(self, context, self.modifier, placement=placement)
 
         return {'FINISHED'}
 
     def invoke(self, context, event):
         self.shift = event.shift
-        self.alt = event.alt
+        self.ctrl = event.ctrl
 
         return self.execute(context)

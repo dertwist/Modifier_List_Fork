@@ -3,6 +3,7 @@ import numpy as np
 import bpy
 from bpy.props import *
 from bpy.types import Menu, Panel, UIList
+from ... import __package__ as base_package
 
 # Check if the modifier layouts can be imported from Blender. If not,
 # import the layouts included in this addon. This is needed for 2.90 and
@@ -38,7 +39,7 @@ def _favourite_modifier_buttons(layout):
 
     Empty rows in preferences are skipped."""
 
-    prefs = bpy.context.preferences.addons["modifier_list"].preferences
+    prefs = bpy.context.preferences.addons[base_package].preferences
     fav_names_icons_types_iter = favourite_modifiers_names_icons_types()
 
     place_three_per_row = prefs.favourites_per_row == '3'
@@ -217,6 +218,22 @@ def _show_on_cage_button(object, modifier, layout, pcoll, use_in_list):
     return True
 
 
+# def _pin_to_last(object, modifier, layout, pcoll, use_in_list):
+#     mods = object.modifiers
+#     mod_index = mods.find(modifier.name)
+
+#     # Button
+#     row = layout.row(align=True)
+#     pine_icon = pcoll['PINNED']
+
+#     for mod in mods[(mod_index + 1):(len(mods))]:
+#         if mod.use_pin_to_last:
+#             return False
+
+#     icon = pine_icon.icon_id if modifier.show_on_cage else pine_icon.icon_id
+#     row.prop(modifier, "use_pin_to_last", text="", icon_value=icon, emboss=not use_in_list)
+#     return True
+
 def _curve_properties_context_change_button(layout, pcoll, use_in_list):
     sub = layout.row(align=True)
     empy_icon = pcoll['EMPTY_SPACE']
@@ -327,6 +344,12 @@ def _modifier_visibility_buttons(modifier, layout, pcoll, use_in_list=False):
     if not show_on_cage_added and not context_change_added:
         sub = row.row(align=True)
         sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
+
+    # #pin to last
+    for mod in ob.modifiers:
+        if mod.use_pin_to_last:
+            row.prop(modifier, "use_pin_to_last", text="", emboss=True, icon='PINNED')
+            return
 
 
 def _gizmo_object_settings(layout):
@@ -719,7 +742,7 @@ class ModifierExtrasBase:
     bl_region_type = 'WINDOW'
 
     def draw(self, context):
-        prefs = bpy.context.preferences.addons["modifier_list"].preferences
+        prefs = bpy.context.preferences.addons[base_package].preferences
         ml_props = context.window_manager.modifier_list
         pcoll = get_icons()
         ob = get_ml_active_object()
@@ -776,8 +799,10 @@ class ModifierExtrasBase:
                 if BLENDER_VERSION_MAJOR_POINT_MINOR >= 3.5:
                     if active_mod.type == 'NODES' and active_mod.node_group:
                         col.operator("object.geometry_nodes_move_to_nodes")
-                        col.operator("object.geometry_node_show_node_group")
-                    col.prop(active_mod, "object.modifiers_show_group_selector")
+                        if BLENDER_VERSION_MAJOR_POINT_MINOR >= 4.0:
+                            col.prop(active_mod, "show_group_selector", toggle=True)
+                        # if BLENDER_VERSION_MAJOR_POINT_MINOR >= 4.2:
+                        #     col.prop(active_mod, "use_pin_to_last", text="Pin to Last", icon='PINNED')
                     
 
                 col.operator("object.modifier_copy_to_selected").modifier = active_mod.name
@@ -840,7 +865,7 @@ class OBJECT_PT_ml_gizmo_object_settings(Panel):
 def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=False):
     ob = get_ml_active_object()
     active_mod_index = ob.ml_modifier_active_index
-    prefs = bpy.context.preferences.addons["modifier_list"].preferences
+    prefs = bpy.context.preferences.addons[base_package].preferences
     pcoll = get_icons()
 
     if ob.modifiers:
@@ -912,6 +937,13 @@ def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=Fals
     if not prefs.show_search_and_menu_bar:
         if not ob.modifiers:
             col.label(text="Add New Modifier Shift + A")
+    
+    #warn if the object has a object constraint modifier and swish it to stack instead of list to avoide crash and bugs
+    if ob.constraints:
+        col.label(text="Unsuported Constraint on Object! Switch to Stack to avoid bugs!", icon='ERROR')
+        prefs = bpy.context.preferences.addons[base_package].preferences
+        col.row().prop(prefs, "properties_editor_style", expand=True)
+        return
 
     # === Modifier settings ===
     if not ob.modifiers:
@@ -961,6 +993,9 @@ def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=Fals
 
         if active_mod.type not in modifier_categories.DONT_SUPPORT_COPY:
             sub.operator("object.ml_modifier_copy", text="", icon='DUPLICATE')
+        
+        #if active_mod.use_pin_to_last:
+        sub.prop(active_mod, "use_pin_to_last", text="", icon='PINNED')
 
     # === Gizmo object settings ===
     if ob.type in {'CURVE', 'FONT', 'LATTICE', 'MESH', 'SURFACE'}:
@@ -1011,7 +1046,7 @@ def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=Fals
 
 def modifiers_ui_with_stack(context, layout, use_in_popup=False):
     ob = get_ml_active_object()
-    prefs = bpy.context.preferences.addons["modifier_list"].preferences
+    prefs = bpy.context.preferences.addons[base_package].preferences
     pcoll = get_icons()
 
     if ob.modifiers:

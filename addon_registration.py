@@ -25,7 +25,9 @@ def _find_modules(root_dir):
     Directories whose name contains "__" are ignored.
     """
     current_directory = os.path.dirname(__file__)
+    #print("current_directory", current_directory)
     root_directory = os.path.join(current_directory, root_dir)
+    #print("root_directory", root_directory)
 
     if not os.path.exists(root_directory):
         raise FileNotFoundError("root_dir doesn't exist")
@@ -34,12 +36,14 @@ def _find_modules(root_dir):
 
     for root, dirs, files in os.walk(root_directory):
         dirs[:] = [d for d in dirs if "__" not in d]
+        #print("dirs", dirs)
         relative_root = os.path.relpath(root, current_directory)
+        #print("relative_root", relative_root)
         for f in files:
             if f.endswith(".py") and "__" not in f:
                 joined = os.path.join(relative_root, f[:-3])
                 modules.add(joined.replace(os.path.sep, "."))
-
+        #print("modules", modules)
     return modules
 
 
@@ -54,7 +58,7 @@ def _import_modules(modules):
                 sys.modules.pop(mod.__name__)
             except KeyError:
                 pass
-
+    #print("modules import", modules)
     return [importlib.import_module("." + mod, package=__package__) for mod in modules]
 
 
@@ -63,6 +67,7 @@ def _store_modules(modules):
     global imported_modules
     imported_modules.clear()
     imported_modules = modules
+    #print("imported_modules_store", imported_modules)
 
 
 # Finding and sorting classes
@@ -75,20 +80,36 @@ def _find_bl_classes(modules):
     Modules must contain their relative paths.
     """
     bl_classes = []
+    #print("modules", modules)
+    #print("bl_classes", bl_classes)
 
     cur_dir_path = os.path.dirname(__file__)
+    #print("cur_dir_path", cur_dir_path)
     cur_dir_basename = os.path.basename(cur_dir_path)
+    #print("cur_dir_basename", cur_dir_basename)
 
     for mod in modules:
         full_module_path = mod.__file__
+        #print("full_module_path", full_module_path)
         module_path_from_cur_dir = full_module_path.replace(cur_dir_path, cur_dir_basename)
+        #print("module_path_from_cur_dir", module_path_from_cur_dir)
         formatted_module_path = module_path_from_cur_dir.replace(os.path.sep, ".")[:-3]
-        class_members = [m[1] for m in inspect.getmembers(mod, inspect.isclass)
-                        if m[1].__module__ == formatted_module_path]
+        #print("formatted_module_path", formatted_module_path)
+        #print("formatted_module_path", formatted_module_path)
+        class_members = [m[1] for m in inspect.getmembers(mod, inspect.isclass)]
+
+        #remove the classmember if its not in formatted_module_path since __module__ does not seem to work in 4.2 with manifest the way it was writen before, but works with legacy bl
+        # I love debugging for hours :D
+        class_members = [cm for cm in class_members if formatted_module_path in cm.__module__]
+
+        #print("class_members", class_members)
         bpy_subclasses = [cm for cm in class_members if issubclass(cm, bpy_struct) and
                           not issubclass(cm, WorkSpaceTool)]
+        #print("bpy_subclasses", bpy_subclasses)
         bl_classes.extend(bpy_subclasses)
+        #print("bl_classes", bl_classes)
 
+    #print("all bl_classes", bl_classes)
     return bl_classes
 
 

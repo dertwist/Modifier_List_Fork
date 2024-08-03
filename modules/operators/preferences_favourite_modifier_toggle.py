@@ -4,6 +4,7 @@ from bpy.types import Operator
 
 
 from ..utils import get_favourite_modifiers
+from ... import __package__ as base_package
 
 
 class UI_OT_ml_favourite_modifier_toggle(Operator):
@@ -15,7 +16,7 @@ class UI_OT_ml_favourite_modifier_toggle(Operator):
     modifier: StringProperty()
 
     def execute(self, context):
-        prefs = context.preferences.addons["modifier_list"].preferences
+        prefs = context.preferences.addons[base_package].preferences
         ml_props = context.window_manager.modifier_list
         active_index = ml_props.active_favourite_modifier_slot_index
 

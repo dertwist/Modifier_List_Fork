@@ -13,7 +13,7 @@ from .modifier_categories import ALL_MODIFIERS_NAMES_ICONS_TYPES
 from .ui.properties_editor import register_DATA_PT_modifiers, reregister_DATA_PT_modifiers
 from .ui.ui_common import box_with_header, favourite_modifiers_configuration_layout
 from .ui.sidebar import update_sidebar_category
-
+from .. import __package__ as base_package
 
 # Property reading
 # ======================================================================
@@ -52,7 +52,7 @@ def read_prefs(prefs_file):
         except json.decoder.JSONDecodeError:
             return
 
-    prefs = bpy.context.preferences.addons["modifier_list"].preferences
+    prefs = bpy.context.preferences.addons[base_package].preferences
     fill_prefs(prefs_dict, prefs)
 
 
@@ -74,7 +74,7 @@ def ensure_valid_write_value(value):
 
 
 def create_prefs_dict():
-    prefs = bpy.context.preferences.addons["modifier_list"].preferences
+    prefs = bpy.context.preferences.addons[base_package].preferences
     prefs_dict = {}
     fill_prefs_dict(prefs, prefs_dict)
     return prefs_dict
@@ -94,7 +94,7 @@ def write_prefs():
     """Write preferences into a json"""
     prefs_dict = create_prefs_dict()
     config_dir = bpy.utils.user_resource('CONFIG')
-    ml_config_dir = os.path.join(config_dir, "modifier_list")
+    ml_config_dir = os.path.join(config_dir, base_package)
 
     if not os.path.exists(ml_config_dir):
         os.mkdir(ml_config_dir)
@@ -329,7 +329,8 @@ def add_modifier_defaults_group_props(identifier, cls, property_group):
         "use_apply_on_spline",
         "show_expanded",
         "is_active",
-        "debug_options"
+        "debug_options",
+        "use_pin_to_last"
     }
     all_mod_attrs = cls.bl_rna.properties.values()
     mod_settings = [attr for attr in all_mod_attrs
@@ -418,7 +419,7 @@ def add_modifier_defaults_group_props(identifier, cls, property_group):
 # ======================================================================
 
 class Preferences(AddonPreferences):
-    bl_idname = "modifier_list"
+    bl_idname = base_package
 
     # === General settings ===
     use_sidebar: BoolProperty(
@@ -791,7 +792,7 @@ def register():
 
     # === Read preferences from a json ===
     config_dir = bpy.utils.user_resource('CONFIG')
-    prefs_file = os.path.join(config_dir, "modifier_list", "preferences.json")
+    prefs_file = os.path.join(config_dir, base_package, "preferences.json")
 
     global skip_writing_prefs
     skip_writing_prefs = True

@@ -3,6 +3,7 @@ import numpy as np
 import bpy
 from bpy.props import *
 from bpy.types import Operator
+from ... import __package__ as base_package
 
 from . import lattice_toggle_editmode, lattice_toggle_editmode_prop_editor
 from ..modifier_categories import CURVE_SURFACE_TEXT_DEFORM_NAMES_ICONS_TYPES
@@ -99,7 +100,7 @@ class ApplyModifier:
         return True
 
     def execute(self, context):
-        prefs = bpy.context.preferences.addons["modifier_list"].preferences
+        prefs = bpy.context.preferences.addons[base_package].preferences
         ob = context.active_object
         ml_active_ob = get_ml_active_object()
         ml_active_ob_init_data_name = ml_active_ob.data.name
@@ -162,7 +163,7 @@ class ApplyModifier:
         ml_active_ob = get_ml_active_object()
         active_mod_index = ml_active_ob.ml_modifier_active_index
         active_mod = ml_active_ob.modifiers[active_mod_index]
-        prefs = bpy.context.preferences.addons["modifier_list"].preferences
+        prefs = bpy.context.preferences.addons[base_package].preferences
         disallow_applying_hidden_modifiers = (
             not prefs.disallow_applying_hidden_modifiers if event.alt
             else prefs.disallow_applying_hidden_modifiers)
@@ -199,7 +200,7 @@ class ApplyModifier:
         try:
             if self.apply_as == 'DATA':
                 with context.temp_override(id=ml_active_object): ### Draise - added "with" for Blender 4.0.0 compatibility
-                    bpy.ops.object.modifier_apply(modifier=mod_name)
+                    bpy.ops.object.modifier_apply('INVOKE_DEFAULT', modifier=mod_name)
             elif self.apply_as == 'SHAPE':
                     bpy.ops.object.modifier_apply_as_shapekey(
                         override, modifier=mod_name,

@@ -3,6 +3,7 @@ from mathutils import Matrix, Vector
 from mathutils.geometry import distance_point_to_plane
 
 from .modifier_categories import ALL_MODIFIERS_NAMES_ICONS_TYPES, HAVE_GIZMO_PROPERTY
+from .. import __package__ as base_package
 
 
 # Generic utils
@@ -37,7 +38,7 @@ def object_type_has_modifiers(object):
 
 
 def get_favourite_modifiers():
-    prefs = bpy.context.preferences.addons["modifier_list"].preferences
+    prefs = bpy.context.preferences.addons[base_package].preferences
     return {attr: getattr(prefs, attr) for attr in prefs.__annotations__
             if attr.startswith("modifier_") and attr[-1].isdigit()}
 
@@ -291,7 +292,7 @@ def _create_gizmo_object(self, context, modifier, placement='OBJECT'):
     ml_col = _get_ml_collection(context)
     ml_col.objects.link(gizmo_ob)
 
-    prefs = bpy.context.preferences.addons["modifier_list"].preferences
+    prefs = bpy.context.preferences.addons[base_package].preferences
     ob = get_ml_active_object()
 
     # Only use update_from_editmode if necessary
@@ -486,7 +487,7 @@ def assign_gizmo_object_to_modifier(self, context, modifier, placement='OBJECT')
     """
     ob = get_ml_active_object()
     mod = ob.modifiers[modifier]
-    prefs = bpy.context.preferences.addons["modifier_list"].preferences
+    prefs = bpy.context.preferences.addons[base_package].preferences
     parent_gizmo = prefs.parent_new_gizmo_to_object
 
     # If modifier is UV Project, handle it differently here

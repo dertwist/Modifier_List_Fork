@@ -5,6 +5,7 @@ from .modifiers_ui import modifiers_ui_with_list, modifiers_ui_with_stack
 from .ui_common import pin_object_button
 from .vertex_groups_ui import vertex_groups_ui
 from ..utils import get_ml_active_object, object_type_has_modifiers
+from ... import __package__ as base_package
 
 
 class BasePanel:
@@ -20,7 +21,7 @@ class VIEW3D_PT_ml_modifiers(Panel, BasePanel):
 
     @classmethod
     def poll(cls, context):
-        prefs = bpy.context.preferences.addons["modifier_list"].preferences
+        prefs = bpy.context.preferences.addons[base_package].preferences
 
         if not prefs.use_sidebar:
             return False
@@ -42,7 +43,7 @@ class VIEW3D_PT_ml_modifiers(Panel, BasePanel):
         layout = self.layout
 
         ob = get_ml_active_object()
-        prefs = bpy.context.preferences.addons["modifier_list"].preferences
+        prefs = bpy.context.preferences.addons[base_package].preferences
 
         if not ob:
             layout.label(text="No active object")
@@ -61,7 +62,7 @@ class VIEW3D_PT_ml_vertex_groups(Panel, BasePanel):
 
     @classmethod
     def poll(cls, context):
-        prefs = bpy.context.preferences.addons["modifier_list"].preferences
+        prefs = bpy.context.preferences.addons[base_package].preferences
 
         if not prefs.use_sidebar:
             return False
@@ -81,7 +82,7 @@ def update_sidebar_category():
     bpy.utils.unregister_class(VIEW3D_PT_ml_modifiers)
     bpy.utils.unregister_class(VIEW3D_PT_ml_vertex_groups)
 
-    category = bpy.context.preferences.addons["modifier_list"].preferences.sidebar_category
+    category = bpy.context.preferences.addons[base_package].preferences.sidebar_category
     VIEW3D_PT_ml_modifiers.bl_category = category
     VIEW3D_PT_ml_vertex_groups.bl_category = category
 
