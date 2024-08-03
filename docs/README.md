@@ -1,3 +1,5 @@
+## Note - This is outdated, for Blender 4.2 and higher its available on the Blender Extension Platform: https://extensions.blender.org/add-ons/modifier-list-fork/
+
 # Modifier List Fork for Blender 4.0
 
 ### Enhanced UI layout for modifiers with handy features. Available also in the sidebar and as a popup.
