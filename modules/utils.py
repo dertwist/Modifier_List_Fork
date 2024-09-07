@@ -51,18 +51,29 @@ def favourite_modifiers_names_icons_types():
     favorite_mods = get_favourite_modifiers().values()
     return (all_mods_dict[mod] if mod else (None, None, None) for mod in favorite_mods)
 
-
 def get_ml_active_object():
     """Get the active object or if some object is pinned, get that"""
     context = bpy.context
     ob = context.object
+
+    #get if the obj is a Duplicate Linked Modifiers obj
+    if ob.modifiers:
+        mod = ob.modifiers[0]
+        if len(ob.modifiers) == 1:
+            if mod.name == "Duplicate Linked Modifiers":
+                for item in mod.node_group.interface.items_tree:
+                    if item.in_out == "INPUT" and item.identifier == 'Socket_2': 
+                        if mod[item.identifier]:
+                            object_name = mod[item.identifier].name
+                            ob = bpy.data.objects[object_name]
+
     ml_pinned_ob = context.scene.modifier_list.pinned_object
     area = context.area
 
     if ml_pinned_ob and area.type != 'PROPERTIES':
         if not (ml_pinned_ob.users == 1 and ml_pinned_ob.use_fake_user):
             return ml_pinned_ob
-
+        
     return ob
 
 

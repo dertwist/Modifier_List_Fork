@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "Modifier_List_Fork"
-version = "1.8.65"
+version = "1.8.75"
 name = "Modifier List [Fork]"
 tagline = "Add-on to Enhanced UI layout for modifiers with handy features"
 maintainer = "Antti Tikka, Draise, Dan-Gry"

@@ -646,8 +646,10 @@ def time_to_string(t):
 def _get_all_modifier_times():
     global prev_ms_times
 
+    obj = get_ml_active_object()
+
     depsgraph = bpy.context.view_layer.depsgraph
-    ob_eval = bpy.context.object.evaluated_get(depsgraph)
+    ob_eval = obj.evaluated_get(depsgraph)
 
     if bpy.context.scene.total_time:
         times = []
@@ -665,9 +667,10 @@ prev_ms_times = {}
 
 def _get_modifier_times(mod):
     global prev_ms_times
-    
+    obj = get_ml_active_object()
+
     depsgraph = bpy.context.view_layer.depsgraph
-    ob_eval = bpy.context.object.evaluated_get(depsgraph)
+    ob_eval = obj.evaluated_get(depsgraph)
 
     ms_times = ob_eval.modifiers[mod.name].execution_time
 
@@ -676,7 +679,7 @@ def _get_modifier_times(mod):
         ms_times = 0.0015
     else:
         if ms_times >= 1e-4:
-            obj_name = bpy.context.object.name
+            obj_name = obj.name
             if obj_name not in prev_ms_times:
                 prev_ms_times[obj_name] = {}
             prev_ms_times[obj_name][mod.name] = ms_times
@@ -937,8 +940,48 @@ def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=Fals
     if not prefs.show_search_and_menu_bar:
         if not ob.modifiers:
             col.label(text="Add New Modifier Shift + A")
-    
-    #warn if the object has a object constraint modifier and swish it to stack instead of list to avoide crash and bugs
+
+    # === get if the obj is a Duplicate Linked Modifiers Object ===  
+    obj = bpy.context.object
+
+    if obj.modifiers:
+        mod = obj.modifiers[0]
+        if len(obj.modifiers) == 1:
+            if mod.name == "Duplicate Linked Modifiers":
+                for item in mod.node_group.interface.items_tree:
+                    if item.in_out == "INPUT" and item.identifier == 'Socket_2': 
+                        if mod[item.identifier]:
+                            object_name = mod[item.identifier].name
+                            obj = bpy.data.objects[object_name]
+                            column = layout.column()
+                            lay = column  
+                            row = lay.row(align = True)
+                            row.alignment = 'LEFT'
+                            
+                            row.label(text="Linked Modifier Instance of: " + object_name, icon="LINKED")
+                            row.operator("object.ml_select", text="select").object_name = object_name
+        else:
+            if "Duplicate Linked Modifiers" in obj.modifiers:
+                for item in mod.node_group.interface.items_tree:
+                    if item.in_out == "INPUT" and item.identifier == 'Socket_2': 
+                        if mod[item.identifier]:
+                            object_name = mod[item.identifier].name
+                            obj = bpy.data.objects[object_name]
+                            column = layout.column()
+                            lay = column
+                            row = lay.row(align = True)
+                            row.alignment = 'LEFT'
+                            row.label(text="Overridden Modifier Instance of: " + object_name, icon="UNLINKED")
+                            row.operator("object.ml_select", text="select").object_name = object_name 
+                    if item.in_out == "INPUT" and item.identifier == 'Socket_3': 
+                        is_instance = mod[item.identifier]
+                        if is_instance:
+                            row = layout.row(align = True)
+                            row.alignment = 'LEFT'
+                            row.label(text="Instanced, Modifiers may not work", icon="ERROR")
+                            row.prop(mod, f'["{"Socket_3"}"]', text="As Instance")
+
+    #warn if the object has a object constraint modifier and switch it to stack instead of list to avoide crash and bugs
     if ob.constraints:
         col.label(text="Unsuported Constraint on Object! Switch to Stack to avoid bugs!", icon='ERROR')
         prefs = bpy.context.preferences.addons[base_package].preferences

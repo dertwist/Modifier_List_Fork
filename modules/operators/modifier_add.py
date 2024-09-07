@@ -119,6 +119,10 @@ class OBJECT_OT_ml_modifier_add(Operator):
             # the first one. So, only the other should be set, according
             # to the setting that determines which one is used.
 
+            #need to set Geomtry Node Modifier to show_group, since otherwise the New and list UI will not show up
+            if mod_type == 'NODES':
+                mod.show_group_selector = True
+
             if mod_type == 'BEVEL':
                 offset_type = defaults_group.offset_type
 

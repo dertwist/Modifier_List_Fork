@@ -1658,11 +1658,14 @@ class DATA_PT_modifiers:
         col = row.column()
         col.label(text="Quad Method:")
         col.prop(md, "quad_method", text="")
-        col.label(text="Minimum Vertices:")
-        col.prop(md, "min_vertices", text="")
+        #if blender viersion is 4.2.1 or higher
+        if bpy.app.version >= (4, 2, 1):
+            col.prop(md, "keep_custom_normals")
         col = row.column()
         col.label(text="Ngon Method:")
         col.prop(md, "ngon_method", text="")
+        col.label(text="Minimum Vertices:")
+        col.prop(md, "min_vertices", text="")
 
     def UV_WARP(self, layout, ob, md):
         split = layout.split()
@@ -2272,6 +2275,11 @@ class DATA_PT_modifiers:
         
     def _nodes_4_0(self, layout, ob, md):
         active_mod = ob.modifiers[ob.ml_modifier_active_index] if ob.modifiers else None
+        # if active_mod.name == "Duplicate Linked Modifiers":
+        #     for item in active_mod.node_group.interface.items_tree:
+        #         if item.in_out == "INPUT" and item.identifier == 'Socket_2': 
+        #             object_name = active_mod[item.identifier].name
+        #             self.Test
         
         if active_mod.type == 'NODES' and active_mod.show_group_selector == True:
             layout.template_ID(md, "node_group", new="node.new_geometry_node_group_assign")
@@ -2281,8 +2289,8 @@ class DATA_PT_modifiers:
         split_factor = 0.4
 
         self._nodes_4_0_inputs(layout, ob, md, split_factor)
-
         self._nodes_4_0_outputs(layout, ob, md, split_factor)
 
     def NODES(self, layout, ob, md):
         self._nodes_4_0(layout, ob, md)
+
