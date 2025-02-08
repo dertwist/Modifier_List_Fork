@@ -18,7 +18,8 @@ class DATA_PT_modifiers(Panel):
     def poll(cls, context):
         ob = get_ml_active_object()
         if ob is not None:
-            return object_type_has_modifiers(ob)
+            if object_type_has_modifiers(ob) or ob.type == 'GREASEPENCIL':  # Grease Pencil has not been added to pop up and panel duo to no support for list
+                return True
         return False
 
     def draw(self, context):
@@ -26,8 +27,8 @@ class DATA_PT_modifiers(Panel):
 
         prefs = bpy.context.preferences.addons[base_package].preferences
 
-        if prefs.properties_editor_style == 'LIST':
-            modifiers_ui_with_list(context, layout)
+        if prefs.properties_editor_style == 'LIST' and context.object.type != 'GREASEPENCIL': # Grease Pencil has not been added to list
+            modifiers_ui_with_list(context, layout, new_menu=False)
         else:
             modifiers_ui_with_stack(context, layout)
 

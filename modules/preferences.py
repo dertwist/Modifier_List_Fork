@@ -38,6 +38,8 @@ def fill_prefs(prefs_dict, prefs):
         if isinstance(prop_in_prefs, PropertyGroup):
             fill_prefs(prefs_dict[prop], prop_in_prefs)
         else:
+            if prop == "flip_axis" and prefs_dict[prop] == []: # fixes error if old prefs are used in 4.4
+                continue
             setattr(prefs, prop, ensure_valid_read_value(prefs_dict[prop]))
 
 
@@ -227,7 +229,7 @@ ACTUAL_MODIFIER_DEFAULTS_PER_MODIFIER = {
                 0.0, 0.0, 0.0, 0.0
             )
     },
-    "MESH_CACHE": {"flip_axis": set()},
+    "MESH_CACHE": {"flip_axis": set() if bpy.app.version < (4, 4, 0) else (False, False, False)},
     "MESH_SEQUENCE_CACHE": {"read_data": {'VERT', 'UV', 'POLY', 'COLOR'}},
     "MESH_TO_VOLUME": {
         "density": 1.0,
@@ -446,10 +448,23 @@ class Preferences(AddonPreferences):
         update=properties_editor_style_callback)
     
     show_search_and_menu_bar: BoolProperty(
-        name="Show Search And Menu Bar",
+        name="Search & Add Menu",
         description="Show the search and menu bar in the Properties Editor",
         default=True,
         update=use_properties_editor_callback)
+    
+    show_apply_copy_pin_bar: BoolProperty(
+        name="Operations Bar",
+        description="Show the apply, copy and pin bar in the Properties Editor",
+        default=True,
+        update=use_properties_editor_callback)
+    
+    classic_display_order: BoolProperty(
+        name="Classic Visibility Buttons Order",
+        description="Display show modifiers visibilty buttons in the classic order",
+        default=False,
+        update=prefs_callback)
+    
 
     sidebar_style: EnumProperty(
         items=style_items,
@@ -545,14 +560,14 @@ class Preferences(AddonPreferences):
         update=prefs_callback)
 
     show_confirmation_popups: BoolProperty(
-        name="Show Confirmation Popups",
+        name="Confirmation Popups",
         description="Show confirmation popups for Apply All Modifiers "
                     "and Remove All Modifiers operators",
         default=True,
         update=prefs_callback)
 
     show_batch_ops_in_main_layout_with_stack_style: BoolProperty(
-        name="Show Batch Operators In Main Layout With Stack Style",
+        name="Batch Operators In Main Layout With Stack Style",
         description="When using the stack layout, show the batch operators in the main layout in "
                     "their own row. Otherwise they are located in the Modifier Extras popover",
         default=True,
@@ -621,50 +636,59 @@ class Preferences(AddonPreferences):
         # === Info ===
         col = layout.column()
         col.label(icon='INFO',
-                  text="Preferences are auto saved into your Blender config folder, eg:")
-        col.label(text="      '...\\Blender Foundation\\Blender\\<blender version>"
-                       "\\config\\modifier_list\\preferences.json'")
-
-        layout.separator()
+                  text="Preferences are Auto Saved in the Blender Config Folder")
 
         # === Import ===
+        row = layout.row(align=True)
         filepath = os.path.dirname(bpy.utils.resource_path('USER')) + os.path.sep
-        layout.operator("wm.ml_preferences_import", icon='IMPORT').filepath = filepath
+        row.operator("ml.open_preferences_folder", icon='FILE_FOLDER')
+        row.operator("wm.ml_preferences_import", icon='IMPORT').filepath = filepath
 
         layout.separator()
 
         # === Enable/disable in Properties Editor and sidebar ===
-        layout.prop(self, "use_properties_editor")
-        layout.prop(self, "use_sidebar")
+        row = layout.row()
+        row.label(text="Show in:")
+        row.prop(self, "use_properties_editor")
+        row.prop(self, "use_sidebar")
 
-        layout.separator()
 
         # === UI style ===
-        layout.label(text="Style:")
-
-        split = layout.split()
-        split.label(text="Properties Editor")
-        split.row().prop(self, "properties_editor_style", expand=True)
         row = layout.row()
-        layout.prop(self, "show_search_and_menu_bar")
+  
+        row.label(text="UI Style:")
+        row.row().prop(self, "properties_editor_style", expand=True)
+
+        row = layout.row()
+        row = layout.row()
+        row = layout.row()
+        row.label(text="Show UI Elements:")
+        row = layout.row()
+        row.alignment = 'LEFT'
+
+        row.prop(self, "show_search_and_menu_bar")
+        if self.properties_editor_style == 'LIST':
+            row = layout.row()
+            row.prop(self, "show_apply_copy_pin_bar")
+   
 
         # template_modifiers() doesn't currently work outside of
         # Properties Editor, so sidebar_style and popup_style are
         # disabled. https://developer.blender.org/T88655.
-        layout.label(text="The next two settings are currently disabled because of a bug in "
-                     "Blender (T88655)", icon='INFO')
+        # layout.label(text="The next two settings are currently disabled because of a bug in "
+        #              "Blender (T88655)", icon='INFO')
 
-        split = layout.split()
-        split.label(text="Sidebar")
-        row = split.row()
-        row.enabled = False
-        row.prop(self, "sidebar_style", expand=True)
+        # split = layout.split()
+        # split.label(text="Sidebar")
+        # row = split.row()
+        # row.enabled = False
+        # row.prop(self, "sidebar_style", expand=True)
 
-        split = layout.split()
-        split.label(text="Popup")
-        row = split.row()
-        row.enabled = False
-        row.prop(self, "popup_style", expand=True)
+        # split = layout.split()
+        # split.label(text="Popup")
+        # row = split.row()
+        # row.enabled = False
+        # row.prop(self, "popup_style", expand=True)
 
         # === Sidebar ===
         if self.use_sidebar:
@@ -705,8 +729,12 @@ class Preferences(AddonPreferences):
             split.label(text="Icon Color")
             split.row().prop(self, "icon_color", expand=True)
 
+            box.prop(self, "classic_display_order")
             box.prop(self, "reverse_list")
             box.prop(self, "hide_general_settings_region")
+    
+            split = box.split()
+            split.label(text="Show")
             box.prop(self, "show_confirmation_popups")
             box.prop(self, "show_batch_ops_in_main_layout_with_stack_style")
 

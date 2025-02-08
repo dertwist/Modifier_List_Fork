@@ -5,6 +5,7 @@ from bpy.types import Operator
 from .modifiers_ui import modifiers_ui_with_list, modifiers_ui_with_stack
 from .ui_common import pin_object_button
 from .vertex_groups_ui import vertex_groups_ui
+from .attributes_ui import attributes_ui
 from ..utils import get_ml_active_object, object_type_has_modifiers
 from ... import __package__ as base_package
 
@@ -64,11 +65,13 @@ class VIEW3D_OT_ml_modifier_popup(Operator):
         if popup_tab == 'MODIFIERS':
             if prefs.popup_style == 'LIST':
                 num_of_rows = prefs.mod_list_def_len
-                modifiers_ui_with_list(context, col, num_of_rows=num_of_rows, use_in_popup=True)
+                modifiers_ui_with_list(context, col, num_of_rows=num_of_rows, use_in_popup=True, new_menu=True)
             else:
                 modifiers_ui_with_stack(context, col, use_in_popup=True)
         elif popup_tab == 'OBJECT_DATA':
             vertex_groups_ui(context, col, num_of_rows=7)
+        elif popup_tab == 'ATTRIBUTES':
+            attributes_ui(context, col, num_of_rows=7)
 
         # === Tabs ===
         col = split.column(align=True)

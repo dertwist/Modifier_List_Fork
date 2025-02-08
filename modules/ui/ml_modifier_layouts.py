@@ -23,42 +23,66 @@ def BOOLEAN(layout, ob, md):
         return
 
     layout.separator()
+    layout.separator()
 
     if md.operand_type == 'OBJECT':
-        layout.label(text="Boolean Object:")
-
-        layout.separator()
+        row = layout.row(align=True)
+        row.label(text="Boolean Object:")
+        op = row.operator("object.ml_select", text="Select")
+        op.object_name = md.object.name
+        op.unhide_object = True
 
         is_hidden = md.object.hide_get()
-        depress = is_hidden
         icon = 'HIDE_ON' if is_hidden else 'HIDE_OFF'
-        layout.operator("object.ml_toggle_visibility_on_view_layer",
-                        text="Hide", icon=icon, depress=depress).object_name = md.object.name
+        row.operator("object.ml_toggle_visibility_on_view_layer",
+                     text="Hide", icon=icon, depress=is_hidden).object_name = md.object.name
 
         layout.separator()
 
-        layout.prop(md.object, "display_type")
+        row = layout.row(align=True)
+        row.label(text="Display As:")
+        row.prop(md.object, "display_type", text="")
 
         layout.separator()
 
-        op = layout.operator("object.ml_smooth_shading_set", text="Shade Smooth")
+        row = layout.row(align=True)
+        row.label(text="Shading:")
+        op = row.operator("object.ml_smooth_shading_set", text="Smooth")
         op.object_name = md.object.name
         op.shade_smooth = True
 
-        op = layout.operator("object.ml_smooth_shading_set", text="Shade Flat")
+        op = row.operator("object.ml_smooth_shading_set", text="Auto Smooth")
+        op.object_name = md.object.name
+        op.auto_smooth = True
+
+        for mod in md.object.modifiers:
+            if mod.name == 'Smooth by Angle':
+                row = layout.row(align=True)
+                row.label(text="Smooth by Angle:")  
+                row.prop(mod, '["Input_1"]', text="Angle")
+                break
+            
+        op = row.operator("object.ml_smooth_shading_set", text="Flat")
         op.object_name = md.object.name
         op.shade_smooth = False
 
-        layout.separator()
-
-        layout.operator("object.ml_select", text="Select").object_name = md.object.name
 
     elif md.operand_type == 'COLLECTION':
         layout.label(text="Boolean Collection:")
 
         layout.separator()
 
-        layer_collection = context.view_layer.layer_collection.children[md.collection.name]
+        # some collections are nested in other collections, so we need to take that into account
+        def find_layer_collection(layer_coll, coll_name):
+            if layer_coll.name == coll_name:
+                return layer_coll
+            for child in layer_coll.children:
+                found = find_layer_collection(child, coll_name)
+                if found:
+                    return found
+            return None
+
+        layer_collection = find_layer_collection(context.view_layer.layer_collection, md.collection.name)
         layout.prop(layer_collection, "hide_viewport", text="Hide")
 
         layout.separator()

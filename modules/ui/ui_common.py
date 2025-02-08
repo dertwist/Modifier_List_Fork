@@ -44,9 +44,9 @@ def favourite_modifiers_configuration_layout(context, layout):
         row.alignment = 'LEFT'
 
         col = row.column(align=True)
-        col.label(text="Modify")
+        col.label(text="Edit")
         col.separator(factor=0.3)
-        for name, icon, _ in modifier_categories.ALL_MODIFY_NAMES_ICONS_TYPES:
+        for name, icon, _ in modifier_categories.ALL_EDIT_NAMES_ICONS_TYPES:
             col.operator("ui.ml_favourite_modifier_toggle", text=name, icon=icon,
                          depress=name in favourite_mods).modifier = name
         col = row.column(align=True)

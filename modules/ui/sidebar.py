@@ -4,6 +4,7 @@ from bpy.types import Panel
 from .modifiers_ui import modifiers_ui_with_list, modifiers_ui_with_stack
 from .ui_common import pin_object_button
 from .vertex_groups_ui import vertex_groups_ui
+from .attributes_ui import attributes_ui
 from ..utils import get_ml_active_object, object_type_has_modifiers
 from ... import __package__ as base_package
 
@@ -51,7 +52,7 @@ class VIEW3D_PT_ml_modifiers(Panel, BasePanel):
             layout.label(text="Wrong object type")
         else:
             if prefs.sidebar_style == 'LIST':
-                modifiers_ui_with_list(context, layout)
+                modifiers_ui_with_list(context, layout, new_menu=True)
             else:
                 modifiers_ui_with_stack(context, layout)
 
@@ -77,17 +78,41 @@ class VIEW3D_PT_ml_vertex_groups(Panel, BasePanel):
         layout = self.layout
         vertex_groups_ui(context, layout)
 
+class VIEW3D_PT_ml_attributes(Panel, BasePanel):
+    bl_label = "Attributes"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        prefs = bpy.context.preferences.addons[base_package].preferences
+
+        if not prefs.use_sidebar:
+            return False
+
+        ob = get_ml_active_object()
+        if ob is not None:
+            return ob.type in {'MESH', 'LATTICE'}
+
+        return False
+
+    def draw(self, context):
+        layout = self.layout
+        attributes_ui(context, layout)
+
 
 def update_sidebar_category():
     bpy.utils.unregister_class(VIEW3D_PT_ml_modifiers)
     bpy.utils.unregister_class(VIEW3D_PT_ml_vertex_groups)
+    bpy.utils.unregister_class(VIEW3D_PT_ml_attributes)
 
     category = bpy.context.preferences.addons[base_package].preferences.sidebar_category
     VIEW3D_PT_ml_modifiers.bl_category = category
     VIEW3D_PT_ml_vertex_groups.bl_category = category
+    VIEW3D_PT_ml_attributes.bl_category = category
 
     bpy.utils.register_class(VIEW3D_PT_ml_modifiers)
     bpy.utils.register_class(VIEW3D_PT_ml_vertex_groups)
+    bpy.utils.register_class(VIEW3D_PT_ml_attributes)
 
 
 def register():
