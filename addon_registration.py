@@ -7,11 +7,19 @@ import sys
 
 from bpy.types import bpy_struct, WorkSpaceTool
 from bpy.utils import register_class, unregister_class
-
+import bpy
+from .modules.icons import load_icons
+from bpy.app.handlers import persistent
 
 imported_modules = []
 sorted_classes = []
 
+@persistent
+def load_icons_after_loading_file(dummy):
+    import functools
+    bpy.app.timers.register(functools.partial(load_icons), first_interval=2.0)
+    # second time to be sure, sometimes the first time is not enoght!
+    bpy.app.timers.register(functools.partial(load_icons), first_interval=12.0)
 
 # Finding and importing modules
 # ======================================================================
@@ -266,6 +274,9 @@ def call_register(module_order=None):
         if hasattr(mod, "register"):
             mod.register()
 
+    # needed since sometimes it fails to properly load the icons in some files due to a Blender bug! This is a workaround
+    bpy.app.handlers.load_post.append(load_icons_after_loading_file)
+
 
 def call_unregister(module_order=None):
     """Calls unregister of all add-on modules.
@@ -280,3 +291,6 @@ def call_unregister(module_order=None):
     for mod in modules:
         if hasattr(mod, "unregister"):
             mod.unregister()
+
+    bpy.app.handlers.load_post.remove(load_icons_after_loading_file)
+    

@@ -23,7 +23,7 @@ class VIEW3D_OT_ml_apply_all_modifiers_multi_user_data_dialog(Operator):
     bl_label = "Apply All Modifiers Dialog"
     bl_options = {'INTERNAL'}
 
-    op_name: StringProperty(options={'HIDDEN', 'SKIP_SAVE'})
+    op_name: StringProperty(options={'HIDDEN', 'SKIP_SAVE'}) # type: ignore
 
     def execute(self, context):
         return {'FINISHED'}
@@ -80,7 +80,7 @@ class VIEW3D_OT_ml_apply_all_modifiers(Operator):
     multi_user_data_apply_method: EnumProperty(
         items=multi_user_data_apply_method_items,
         default='NONE',
-        options={'HIDDEN', 'SKIP_SAVE'})
+        options={'HIDDEN', 'SKIP_SAVE'}) # type: ignore
 
     def __init__(self):
         self.objects_have_local_data = False

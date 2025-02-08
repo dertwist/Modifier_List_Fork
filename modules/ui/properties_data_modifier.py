@@ -139,6 +139,12 @@ class DATA_PT_modifiers:
 
         layout.label(text="Limit Method:")
         layout.row().prop(md, "limit_method", expand=True)
+        if md.limit_method == 'WEIGHT':
+            # if app version is 4.3 or higher, use the new attribute property
+            if BLENDER_VERSION_MAJOR_POINT_MINOR >= 4.3:
+                layout.prop(md, "edge_weight")
+            else:
+                pass
         if md.limit_method == 'ANGLE':
             layout.prop(md, "angle_limit")
         elif md.limit_method == 'VGROUP':
@@ -2059,7 +2065,7 @@ class DATA_PT_modifiers:
         input_prop_ids = [prop_id for prop_id in md.keys()
                           if (prop_id[-1].isdigit())]
 
-        for i, prop_id in enumerate(input_prop_ids):
+        for i, prop_id in enumerate(input_prop_ids[:len(info_per_input)]):
             info_per_input[i]["prop_id"] = prop_id
 
         def get_inputs_hide_in_modifier(node_tree):
@@ -2082,6 +2088,10 @@ class DATA_PT_modifiers:
             "TEXTURE": {"data_collection": "textures", "icon": "TEXTURE"},
         }
         def get_socket_prop_id(input_info):
+                if 'type' in input_info and input_info['type'] == 'MATRIX':  # matrix sockets are not supported y in Blender and will be skipped, should be handeld better since currently it will hide one other input
+                    return
+                if "prop_id" not in input_info: # needed to avoid error when the next socket after matrix socket is skipped
+                    return
                 prop_id = input_info["prop_id"]
                 input_type = input_info["type"]
 
@@ -2218,7 +2228,11 @@ class DATA_PT_modifiers:
             output_prop_ids = []
 
             for prop_id in socket_prop_ids:
-                socket_name = prop_id.split('_')[1]
+                split_prop_id = prop_id.split('_')
+                if len(split_prop_id) > 1:
+                    socket_name = split_prop_id[1]
+                else:
+                    continue
 
                 if socket_name in socket_names:
                     duplicate_socket_names.add(socket_name)
@@ -2235,7 +2249,7 @@ class DATA_PT_modifiers:
            
             if valid_node_outputs_names:
                 if BLENDER_VERSION_MAJOR_POINT_MINOR > 4.0:
-                    header, panel = layout.panel(idname="Outputs", default_closed=False)
+                    header, panel = layout.panel(idname="Outputs", default_closed=True)
                     header.label(text="Outputs")
 
                     if panel:            
@@ -2244,14 +2258,38 @@ class DATA_PT_modifiers:
                     output_prop_names(output_prop_ids)           
 
             def bake_directory():
-                row = layout.split(factor = 0.175)
-                row.label(text="Bake Path")
                 get_active_modifier = ob.modifiers.get(md.name)
                 
                 if not hasattr(get_active_modifier, "bake_directory"):
                     get_active_modifier.bake_directory = bpy.props.StringProperty(name="Bake Directory", default="")
+                
+                if BLENDER_VERSION_MAJOR_POINT_MINOR >= 4.3: # new target property
+                    row = layout.row(align = True)
+                    row.label(text="Bake Target")
+                    row.prop(get_active_modifier, "bake_target", text="")
+                    
+                row = layout.row(align = True)
+                row.label(text="Bake Path")
                 row.prop(get_active_modifier, "bake_directory", text="")
-            
+                bake_node_amounts = (len(md.bakes))
+              
+                for i in range(bake_node_amounts):
+                    row = layout.row(align = True)
+                    label = "Bake Node: " + str(i+1) 
+                    row.label(text=label)
+                    row.operator("object.ml_modifier_bake").bake_id = i
+
+                    op2 = row.operator("object.geometry_node_bake_delete_single", text="", icon = "TRASH")
+                    op2.session_uid = md.id_data.session_uid
+                    op2.modifier_name = md.name
+                    op2.bake_id = md.bakes[i].bake_id
+
+                # op = row.operator("object.geometry_node_bake_single", text="Bake")
+                # op.session_uid = md.id_data.session_uid
+                # op.modifier_name = md.name
+                # op.bake_id = md.bakes[0].bake_id
+                
+
             def named_attributes():
                 layout.label(text="Named Attributes WIP")    
 
@@ -2260,27 +2298,48 @@ class DATA_PT_modifiers:
                 header, panel_manage = layout.panel(idname="Manage",  default_closed=True)
                 header.label(text="Manage")
                 if panel_manage:
-                    header, panel_bake = layout.panel(idname="Bake", default_closed=True)
-                    header.label(text="Bake")
+                    # header, panel_bake = layout.panel(idname="Bake", default_closed=True)
+                    # header.label(text="Bake")
+                    # if panel_bake:
+                    bake_directory()
+                    
+                    # have not figured out how to get the used attributes
 
-                    if panel_bake:
-                        bake_directory()
-
-                    header, panel_named_attributes = layout.panel(idname="Named Attributes", default_closed=True)
-                    header.label(text="Named Attributes")
-                    if panel_named_attributes:
-                        named_attributes()
+                    # header, panel_named_attributes = layout.panel(idname="Named Attributes", default_closed=True)
+                    # header.label(text="Named Attributes")
+                    # # if panel_named_attributes:
+                    # #     named_attributes()
                         
         get_outputs_prop_id()
-        
+
+    def draw_warning(self, layout, ob, md):
+        if BLENDER_VERSION_MAJOR_POINT_MINOR >= 4.3:
+            if md.node_warnings:
+                amount_of_warnings = len(md.node_warnings)
+                text = "Warnings " + "(" + str(amount_of_warnings) + ")"
+                header, panel = layout.panel(idname="Warnings", default_closed=False)
+                header.label(text=text)
+
+                if panel:            
+                    for warning in md.node_warnings:
+                        icon = 'INFO'  
+
+                        if warning.type == 'INFO':
+                            icon = 'INFO'
+                        elif warning.type == 'WARNING':
+                            icon = 'ERROR'
+                        elif warning.type == 'ERROR':
+                            icon = 'CANCEL'
+
+                        layout.label(text=warning.message, icon=icon)
+    
+    def draw_edit_mesh(self, layout, ob, md):
+        row = layout.row()
+        row.operator("object.edit_mesh_clear", text="Clear Edited Mesh Data", icon='X')
+
     def _nodes_4_0(self, layout, ob, md):
         active_mod = ob.modifiers[ob.ml_modifier_active_index] if ob.modifiers else None
-        # if active_mod.name == "Duplicate Linked Modifiers":
-        #     for item in active_mod.node_group.interface.items_tree:
-        #         if item.in_out == "INPUT" and item.identifier == 'Socket_2': 
-        #             object_name = active_mod[item.identifier].name
-        #             self.Test
-        
+
         if active_mod.type == 'NODES' and active_mod.show_group_selector == True:
             layout.template_ID(md, "node_group", new="node.new_geometry_node_group_assign")
 
@@ -2288,9 +2347,19 @@ class DATA_PT_modifiers:
 
         split_factor = 0.4
 
-        self._nodes_4_0_inputs(layout, ob, md, split_factor)
-        self._nodes_4_0_outputs(layout, ob, md, split_factor)
-
+        if md.type == 'NODES':
+            if md.node_group:
+                if not "Edit Mesh" in md.node_group.name:
+                    self._nodes_4_0_inputs(layout, ob, md, split_factor)
+                    self.draw_warning(layout, ob, md)
+                    self._nodes_4_0_outputs(layout, ob, md, split_factor)
+                else:
+                    self.draw_edit_mesh(layout, ob, md)
+            else:
+                self._nodes_4_0_inputs(layout, ob, md, split_factor)
+                self.draw_warning(layout, ob, md)
+                self._nodes_4_0_outputs(layout, ob, md, split_factor)
+    
     def NODES(self, layout, ob, md):
         self._nodes_4_0(layout, ob, md)
 

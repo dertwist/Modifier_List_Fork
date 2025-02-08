@@ -23,6 +23,7 @@ class OBJECT_OT_ml_modifier_add(Operator):
     bl_options = {'REGISTER', 'INTERNAL', 'UNDO'}
 
     modifier_type: StringProperty(options={'HIDDEN'})
+    after_active: BoolProperty(name="After Active", default=False)
 
     @classmethod
     def poll(cls, context):
@@ -42,6 +43,17 @@ class OBJECT_OT_ml_modifier_add(Operator):
         #override = context.copy()
         #override['object'] = ob
 
+        if self.modifier_type == "AUTO_SMOOTH":
+            if context.mode != 'OBJECT':
+                bpy.ops.object.modifier_add_node_group("INVOKE_DEFAULT", asset_library_type='ESSENTIALS', asset_library_identifier="", relative_asset_identifier="geometry_nodes\\smooth_by_angle.blend\\NodeTree\\Smooth by Angle")
+            else:
+                bpy.ops.object.shade_auto_smooth()
+            return {'FINISHED'}
+        
+        if self.modifier_type == "EDIT_MESH":
+            bpy.ops.object.edit_mesh_modifier("INVOKE_DEFAULT")
+            return {'FINISHED'}
+        
         ### Draise - Added the "with" for compatibility with 4.0.0
         try:
             with context.temp_override(id=ob): 
@@ -61,11 +73,15 @@ class OBJECT_OT_ml_modifier_add(Operator):
         self.set_modifier_default_settings()
 
         # Set correct active_mod index
+        pinned_modifiers_amount = sum(mod.use_pin_to_last for mod in ob.modifiers)
+
         max_active_mod_index = len(ob.modifiers) - 1
-        ob.ml_modifier_active_index = max_active_mod_index
+        ob.ml_modifier_active_index = max_active_mod_index - pinned_modifiers_amount
 
         # === Add a gizmo object ===
-        mod = ob.modifiers[-1]
+        #added extra check, since sometimes it can give a error, for some reson
+        if ob.modifiers:
+            mod = ob.modifiers[-1]
 
         if self.shift and ob.type in {'CURVE', 'FONT', 'LATTICE', 'MESH', 'SURFACE'}:
             if mod.type in HAVE_GIZMO_PROPERTY or mod.type == 'UV_PROJECT':
@@ -84,7 +100,9 @@ class OBJECT_OT_ml_modifier_add(Operator):
             return {'FINISHED'}
 
         prefs = bpy.context.preferences.addons[base_package].preferences
-        move = not self.ctrl if prefs.insert_modifier_after_active else self.ctrl
+        move = not self.ctrl if prefs.insert_modifier_after_active else self.ctrl 
+        if self.after_active: # Option to override the preference
+            move = True
 
         if move:
             if init_active_mod_index != max_active_mod_index:
@@ -104,10 +122,14 @@ class OBJECT_OT_ml_modifier_add(Operator):
 
     def set_modifier_default_settings(self):
         mod = get_ml_active_object().modifiers[-1]
-        mod_type = mod.type
-        is_pin_to_last = False
-        # if mod.use_pin_to_last == True:
-        #     is_pin_to_last = True            
+
+        #need to take into account if the object has a pinned modifier
+        index = -1
+        while mod.use_pin_to_last:
+            index -= 1
+            mod = get_ml_active_object().modifiers[index]
+
+        mod_type = mod.type         
 
         prefs = bpy.context.preferences.addons[base_package].preferences
         defaults_group = getattr(prefs.modifier_defaults, mod.type)
@@ -141,7 +163,4 @@ class OBJECT_OT_ml_modifier_add(Operator):
                 if setting == "factor" and deform_method not in {'TAPER', 'STRETCH'}:
                     continue
         
-        # if is_pin_to_last == True:
-        #     mod.use_pin_to_last = True
-
             setattr(mod, setting, value)

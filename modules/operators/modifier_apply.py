@@ -202,9 +202,10 @@ class ApplyModifier:
                 with context.temp_override(id=ml_active_object): ### Draise - added "with" for Blender 4.0.0 compatibility
                     bpy.ops.object.modifier_apply('INVOKE_DEFAULT', modifier=mod_name)
             elif self.apply_as == 'SHAPE':
-                    bpy.ops.object.modifier_apply_as_shapekey(
-                        override, modifier=mod_name,
-                        keep_modifier=self.keep_modifier_when_applying_as_shapekey)
+                    with context.temp_override(id=ml_active_object): 
+                        bpy.ops.object.modifier_apply_as_shapekey(
+                            'INVOKE_DEFAULT', modifier=mod_name,
+                            keep_modifier=self.keep_modifier_when_applying_as_shapekey)
 
             if ml_active_object.type in {'CURVE', 'SURFACE'}:
                 self.curve_modifier_apply_report(mod_type)
