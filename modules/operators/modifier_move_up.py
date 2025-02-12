@@ -42,7 +42,7 @@ class OBJECT_OT_ml_modifier_move_up(Operator):
 
     def execute(self, context):
         ml_active_ob = get_ml_active_object()
-        print(ml_active_ob.name)
+        # print(ml_active_ob.name)
 
         # Make using operators possible when an object is pinned
         

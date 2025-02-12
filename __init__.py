@@ -86,5 +86,5 @@ def unregister():
         km.keymap_items.remove(kmi)
     addon_keymaps.clear()
 
-    addon_registration.call_unregister(module_order=reversed(module_order))
+    addon_registration.call_unregister(module_order=list(reversed(module_order)))
     addon_registration.unregister_bl_classes(addon_name_for_counter=__package__)

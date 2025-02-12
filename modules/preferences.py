@@ -553,11 +553,11 @@ class Preferences(AddonPreferences):
         description="Reverse the order of the list persistently (requires restart)",
         update=prefs_callback)
 
-    hide_general_settings_region: BoolProperty(
-        name="Hide General Settings Region",
+    show_general_settings_region: BoolProperty(
+        name="Modifier Options Bar",
         description="Hide the region which shows modifier name and display settings. "
                     "The same settings are also inside the modifier list",
-        update=prefs_callback)
+        update=prefs_callback, default=True)
 
     show_confirmation_popups: BoolProperty(
         name="Confirmation Popups",
@@ -670,7 +670,8 @@ class Preferences(AddonPreferences):
         if self.properties_editor_style == 'LIST':
             row = layout.row()
             row.prop(self, "show_apply_copy_pin_bar")
-   
+        row.prop(self, "show_general_settings_region")
+
 
         # template_modifiers() doesn't currently work outside of
         # Properties Editor, so sidebar_style and popup_style are
@@ -731,7 +732,6 @@ class Preferences(AddonPreferences):
 
             box.prop(self, "classic_display_order")
             box.prop(self, "reverse_list")
-            box.prop(self, "hide_general_settings_region")
     
             split = box.split()
             split.label(text="Show")

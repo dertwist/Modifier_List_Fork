@@ -81,7 +81,7 @@ class OBJECT_OT_ml_modifier_add(Operator):
         # === Add a gizmo object ===
         #added extra check, since sometimes it can give a error, for some reson
         if ob.modifiers:
-            mod = ob.modifiers[-1]
+            mod = ob.modifiers[-1 - pinned_modifiers_amount] 
 
         if self.shift and ob.type in {'CURVE', 'FONT', 'LATTICE', 'MESH', 'SURFACE'}:
             if mod.type in HAVE_GIZMO_PROPERTY or mod.type == 'UV_PROJECT':

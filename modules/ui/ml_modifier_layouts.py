@@ -34,8 +34,11 @@ def BOOLEAN(layout, ob, md):
 
         is_hidden = md.object.hide_get()
         icon = 'HIDE_ON' if is_hidden else 'HIDE_OFF'
+        text = "Hide"
+        if is_hidden:
+            text = "Show"
         row.operator("object.ml_toggle_visibility_on_view_layer",
-                     text="Hide", icon=icon, depress=is_hidden).object_name = md.object.name
+                     text=text, icon=icon).object_name = md.object.name
 
         layout.separator()
 

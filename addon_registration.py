@@ -4,14 +4,16 @@ import importlib
 import inspect
 import os
 import sys
+import types
 
 from bpy.types import bpy_struct, WorkSpaceTool
 from bpy.utils import register_class, unregister_class
+from typing import Optional, Iterable
 import bpy
 from .modules.icons import load_icons
 from bpy.app.handlers import persistent
 
-imported_modules = []
+imported_modules: list[types.ModuleType] = []
 sorted_classes = []
 
 @persistent
@@ -24,7 +26,7 @@ def load_icons_after_loading_file(dummy):
 # Finding and importing modules
 # ======================================================================
 
-def _find_modules(root_dir):
+def _find_modules(root_dir: str) -> set[str]:
     """Finds all modules in the given directory and returns them in a
     set.
 
@@ -40,7 +42,7 @@ def _find_modules(root_dir):
     if not os.path.exists(root_directory):
         raise FileNotFoundError("root_dir doesn't exist")
 
-    modules = set()
+    modules: set[str] = set()
 
     for root, dirs, files in os.walk(root_directory):
         dirs[:] = [d for d in dirs if "__" not in d]
@@ -55,7 +57,7 @@ def _find_modules(root_dir):
     return modules
 
 
-def _import_modules(modules):
+def _import_modules(modules: set[str]) -> list[types.ModuleType]:
     """Imports or reloads the given modules and returns them in a list.
 
     Modules must contain their relative paths.
@@ -70,7 +72,7 @@ def _import_modules(modules):
     return [importlib.import_module("." + mod, package=__package__) for mod in modules]
 
 
-def _store_modules(modules):
+def _store_modules(modules: list[types.ModuleType]) -> None:
     """Puts the given modules into a global 'imported_modules' list"""
     global imported_modules
     imported_modules.clear()
@@ -158,9 +160,9 @@ def _store_classes(modules):
     sorted_classes = modules
 
 
-def _sort_modules(module_order):
-    modules_to_be_sorted = []
-    unsorted_modules = []
+def _sort_modules(module_order: list[str]) -> list[types.ModuleType]:
+    modules_to_be_sorted: list[types.ModuleType] = []
+    unsorted_modules: list[types.ModuleType] = []
 
     for mod in imported_modules:
         if mod.__name__.split(".")[-1] in module_order:
@@ -278,7 +280,7 @@ def call_register(module_order=None):
     bpy.app.handlers.load_post.append(load_icons_after_loading_file)
 
 
-def call_unregister(module_order=None):
+def call_unregister(module_order: Optional[list[str]] = None) -> None:
     """Calls unregister of all add-on modules.
 
     Args:

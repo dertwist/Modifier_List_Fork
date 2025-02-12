@@ -1161,7 +1161,7 @@ def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=Fals
         # === General settings ===
         box = col.box()
         
-        if not prefs.hide_general_settings_region:
+        if prefs.show_general_settings_region:
             row = box.row()
 
             sub = row.row()

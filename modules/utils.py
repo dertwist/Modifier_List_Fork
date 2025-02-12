@@ -224,7 +224,7 @@ def _get_selected_points_from_curve(curve):
             for p in spline.points:
                 if p.select:
                     sel_points.append(p)
-                    print(p.co)
+                    # print(p.co)
 
     return sel_points
 
