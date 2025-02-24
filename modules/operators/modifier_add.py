@@ -32,6 +32,7 @@ class OBJECT_OT_ml_modifier_add(Operator):
 
     def execute(self, context):
         ob = get_ml_active_object()
+        mod = None
 
         # Store initial active_index
         init_active_mod_index = ob.ml_modifier_active_index
@@ -104,7 +105,7 @@ class OBJECT_OT_ml_modifier_add(Operator):
         if self.after_active: # Option to override the preference
             move = True
 
-        if move:
+        if move and mod:
             if init_active_mod_index != max_active_mod_index:
                 bpy.ops.object.modifier_move_to_index(modifier=mod.name,
                                                       index=init_active_mod_index + 1)

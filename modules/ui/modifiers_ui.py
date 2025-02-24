@@ -86,7 +86,10 @@ def _modifier_search_and_menu(layout, object, new_menu=False):
     ob = object
     ml_props = bpy.context.window_manager.modifier_list
 
-    row = layout.split(factor=0.59)
+    if new_menu:
+        row = layout.split(factor=0.5, align=True)
+    else:
+        row = layout.split(factor=0.59)
     row.enabled = ob.library is None or ob.override_library is not None
 
     if ob.type == 'MESH':
@@ -115,7 +118,6 @@ def _modifier_search_and_menu(layout, object, new_menu=False):
     sub.menu("OBJECT_MT_ml_add_modifier_menu")
     if new_menu:
         sub.operator("wm.call_menu", text="", icon='ADD').name = "OBJECT_MT_modifier_add"
-
     return sub
 
 
@@ -317,7 +319,7 @@ def _classic_modifier_visibility_buttons(modifier, layout, pcoll, use_in_list=Fa
 
     if is_edit_mesh_modifies:
         sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
-
+    
     if not modifier in list_of_frozen_modifiers and not is_edit_mesh_modifies:
         # Hide visibility toggles for collision modifier as they are not
         # used in the regular UI either (apparently can cause problems
@@ -796,7 +798,7 @@ class OBJECT_UL_modifier_list(UIList):
                 if "Edit Mesh" in m.node_group.name:
                     edit_mesh_last_index = i
                     # get all modifers before the last edit mesh modifier
-                    list_of_frozen_modifiers = data.modifiers[:edit_mesh_last_index]
+                    list_of_frozen_modifiers = [m for m in data.modifiers[:edit_mesh_last_index] if not m.show_viewport]
                     no_edit_mesh_modifier_found = False
         
         if no_edit_mesh_modifier_found:
@@ -1064,9 +1066,10 @@ def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=Fals
     sub.scale_x = 3 if align_button_groups else 1.34
     _batch_operators(sub, pcoll)
     # === if no modifiers on active object, text "no modifiers, add with shift a" ===   
-    if not ob.modifiers:
-        row = layout.row()
-        row.label(text="Add New Modifier Shift + A")
+    if not new_menu:
+        if not ob.modifiers:
+            row = layout.row()
+            row.label(text="Add New Modifier Shift + A")
 
     sub_sub = sub.row(align=True)
     sub_sub.scale_x = 0.65 if align_button_groups else 0.85
