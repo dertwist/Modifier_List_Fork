@@ -9,7 +9,8 @@ ITEMS_TO_INCLUDE = (
     "modules",
     "__init__.py",
     "addon_registration.py",
-    "LICENSE"
+    "LICENSE",
+    "blender_manifest.toml",
 )
 
 
