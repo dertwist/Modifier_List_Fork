@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 
 
-ADDON_DIR_NAME = "modifier_list"
+ADDON_DIR_NAME = "Modifier_List_Fork"
 ITEMS_TO_INCLUDE = (
     "icons",
     "modules",
@@ -15,7 +15,6 @@ ITEMS_TO_INCLUDE = (
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("version", help="version number to append to the name of the .zip")
     return parser.parse_args()
 
 
@@ -25,35 +24,27 @@ def get_dir_content_to_ignore(src: str, names: list[str]):
 
 def main():
     root = Path(__file__).resolve().parents[2]
-    all_releases_dir = root / f"{ADDON_DIR_NAME}_RELEASES"
-    all_releases_dir.mkdir(exist_ok=True)
+    zip_name = f"{ADDON_DIR_NAME}"
+    temp_dir = root / f"{ADDON_DIR_NAME}_temp"
 
-    addon_version = parse_args().version
-    zip_name = f"{ADDON_DIR_NAME}_{addon_version}"
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
 
-    if (all_releases_dir / f"{zip_name}.zip").exists():
-        raise FileExistsError(".zip with the given version already exists")
-
-    release_dir = all_releases_dir / ADDON_DIR_NAME
-
-    if release_dir.exists():
-        shutil.rmtree(release_dir)
-
-    release_dir.mkdir()
+    temp_dir.mkdir()
 
     for item in ITEMS_TO_INCLUDE:
         source = root / ADDON_DIR_NAME / item
-        dest = release_dir / item
+        dest = temp_dir / item
         if source.is_dir():
             shutil.copytree(source, dest, ignore=get_dir_content_to_ignore)
         else:
             shutil.copy(source, dest)
 
-    shutil.make_archive(all_releases_dir / zip_name, "zip", release_dir)
+    shutil.make_archive(root / zip_name, "zip", temp_dir)
 
     print(f"{zip_name}.zip succesfully created")
 
-    shutil.rmtree(release_dir)
+    shutil.rmtree(temp_dir)
 
 
 if __name__ == "__main__":
