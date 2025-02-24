@@ -68,6 +68,10 @@ def register():
         kmi = km.keymap_items.new("object.ml_modifier_add_from_search", 'W', 'PRESS', ctrl=True)
         addon_keymaps.append((km, kmi))
 
+        km = wm.keyconfigs.addon.keymaps.new(name='Property Editor', space_type='PROPERTIES')
+        kmi = km.keymap_items.new("object.add_modifier_menu", 'A', 'PRESS', shift=True)
+        addon_keymaps.append((km, kmi))
+
         # this only works on Windows
         if os.name == 'nt':
             km = wm.keyconfigs.addon.keymaps.new(name='Property Editor', space_type='PROPERTIES')

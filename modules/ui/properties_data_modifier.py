@@ -215,9 +215,10 @@ class DATA_PT_modifiers:
             layout.prop(md, "double_threshold")
         elif md.solver == 'EXACT':
             row = layout.row()
+            row.prop(md, "material_mode")
+            row = layout.row()
             row.prop(md, "use_self")
-            if BLENDER_VERSION_MAJOR_POINT_MINOR >= 2.93:
-                row.prop(md, "use_hole_tolerant")
+            row.prop(md, "use_hole_tolerant")
 
         if bpy.app.debug:
             layout.prop(md, "debug_options")
