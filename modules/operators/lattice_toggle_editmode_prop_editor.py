@@ -132,8 +132,21 @@ class OBJECT_OT_ml_lattice_toggle_editmode_prop_editor(Operator):
             gizmo_ob = act_mod.object
 
             bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.select_all(action='DESELECT')
 
             context.view_layer.objects.active = gizmo_ob
+            if gizmo_ob:
+                obj_collection = gizmo_ob.users_collection[0]
+
+                if obj_collection.hide_viewport == True or context.view_layer.layer_collection.children[obj_collection.name].hide_viewport == True:
+                    obj_collection.hide_viewport = False
+                    context.view_layer.layer_collection.children[obj_collection.name].hide_viewport = False
+                    for obj in obj_collection.objects:
+                        obj.hide_set(True)
+                gizmo_ob.hide_set(False)
+                
+                gizmo_ob.hide_viewport = False
+                gizmo_ob.select_set(True)
 
             bpy.ops.object.mode_set(mode='EDIT')
 
@@ -155,10 +168,12 @@ class OBJECT_OT_ml_lattice_toggle_editmode_prop_editor(Operator):
                 pass
 
             bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.select_all(action='DESELECT')
 
             init_act_ob = bpy.data.objects[init_act_ob_name]
 
             if is_init_ob_pinned:
+                init_act_ob.select_set(True)
                 context.view_layer.objects.active = init_act_ob
 
                 if init_mode == 'EDIT_MESH':
@@ -166,10 +181,11 @@ class OBJECT_OT_ml_lattice_toggle_editmode_prop_editor(Operator):
 
             else:
                 if init_mode == 'OBJECT':
-                    ob.select_set(False)
+                    init_act_ob.select_set(True)
                     context.view_layer.objects.active = init_act_ob
                 else:
                     context.view_layer.objects.active = init_act_ob
+                    init_act_ob.select_set(True)
                     bpy.ops.object.mode_set(mode='EDIT')
 
                 space_data.pin_id = None

@@ -536,6 +536,12 @@ class Preferences(AddonPreferences):
         description="Disallow applying modifier's which are hidden in the viewport. \n"
                     "Hold Alt to override this. (When off, the behaviour is reversed)",
         update=prefs_callback)
+    
+    alwayse_show_use_pin_to_last: BoolProperty(
+        name="Always Show Use Pin To Last",
+        description="Always show the use pin to last option icons",
+        default=False,
+        update=prefs_callback)
 
     icon_color_items = [
         ("black", "Black", "", 1),
@@ -731,6 +737,7 @@ class Preferences(AddonPreferences):
             split.row().prop(self, "icon_color", expand=True)
 
             box.prop(self, "classic_display_order")
+            box.prop(self, "alwayse_show_use_pin_to_last")
             box.prop(self, "reverse_list")
     
             split = box.split()

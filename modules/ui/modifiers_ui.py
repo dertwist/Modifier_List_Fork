@@ -228,11 +228,16 @@ def _show_on_cage_button(object, modifier, layout, pcoll, use_in_list):
 def _pin_to_last_buttons(object, modifier, layout, pcoll, use_in_list):
     mods = object.modifiers
     has_pin_to_last = False
+    prefs = bpy.context.preferences.addons[base_package].preferences
+    
+    if not prefs.alwayse_show_use_pin_to_last:
+        for mod in mods:
+            if mod.use_pin_to_last:
+                has_pin_to_last = True
+                break
+    else: 
+        has_pin_to_last = True
 
-    for mod in mods:
-        if mod.use_pin_to_last:
-            has_pin_to_last = True
-            break
     if not has_pin_to_last:
         return
     # Button

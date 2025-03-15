@@ -11,7 +11,8 @@ class OBJECT_OT_ml_sync_active_modifier_between_instances(Operator):
                       "object and the modifier name and type")
     bl_options = {'INTERNAL'}
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.obs_already_in_sync_count = 0
         self.obs_synced_count = 0
         self.obs_without_syncable_modifier_count = 0

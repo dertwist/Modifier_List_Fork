@@ -82,7 +82,8 @@ class VIEW3D_OT_ml_apply_all_modifiers(Operator):
         default='NONE',
         options={'HIDDEN', 'SKIP_SAVE'}) # type: ignore
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.objects_have_local_data = False
         self.objects_have_modifiers = False
         self.objects_have_local_modifiers = False
