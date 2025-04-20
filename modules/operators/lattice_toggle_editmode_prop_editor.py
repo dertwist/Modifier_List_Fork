@@ -1,9 +1,7 @@
 import bpy
 from bpy.props import *
 from bpy.types import Operator
-
-from ..utils import get_gizmo_object_from_modifier, get_ml_active_object
-
+from ..utils import get_gizmo_object_from_modifier, get_ml_active_object, force_show_object
 
 area_index = None
 is_init_ob_pinned = False
@@ -136,17 +134,7 @@ class OBJECT_OT_ml_lattice_toggle_editmode_prop_editor(Operator):
 
             context.view_layer.objects.active = gizmo_ob
             if gizmo_ob:
-                obj_collection = gizmo_ob.users_collection[0]
-
-                if obj_collection.hide_viewport == True or context.view_layer.layer_collection.children[obj_collection.name].hide_viewport == True:
-                    obj_collection.hide_viewport = False
-                    context.view_layer.layer_collection.children[obj_collection.name].hide_viewport = False
-                    for obj in obj_collection.objects:
-                        obj.hide_set(True)
-                gizmo_ob.hide_set(False)
-                
-                gizmo_ob.hide_viewport = False
-                gizmo_ob.select_set(True)
+                force_show_object(gizmo_ob, select=True)
 
             bpy.ops.object.mode_set(mode='EDIT')
 

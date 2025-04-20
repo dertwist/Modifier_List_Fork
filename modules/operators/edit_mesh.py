@@ -1,7 +1,6 @@
 import bpy
 import bmesh
 from ... import __package__ as base_package
-import bpy, mathutils
 
 def edit_mesh_node_group():
     edit_mesh = bpy.data.node_groups.new(type = 'GeometryNodeTree', name = "Edit Mesh")
@@ -59,13 +58,13 @@ def apply_modifiers(obj):
             object_eval = obj.evaluated_get(depsgraph)
             mesh_from_eval = bpy.data.meshes.new_from_object(object_eval, depsgraph=depsgraph)
 
-            if obj.mode == 'OBJECT':
-                obj.data = mesh_from_eval
-            else:
+            if obj.mode == 'EDIT':
                 bm = bmesh.from_edit_mesh(obj.data)
                 bm.clear()
                 bm.from_mesh(mesh_from_eval)
                 bmesh.update_edit_mesh(obj.data)
+            else:
+                obj.data = mesh_from_eval
 
             for mod in obj.modifiers:
                 # hide all modifiers
@@ -157,7 +156,9 @@ class EditmeshClear(bpy.types.Operator):
                                 mod.show_viewport = True
                                 mod.show_render = True
 
-                        bpy.data.meshes.remove(old_mesh_data) # delete old mesh data
+                        # if not used by another object, delete the old mesh data
+                        if data.users == 1 or data.users == 0:
+                            bpy.data.meshes.remove(old_mesh_data) # delete old mesh data
 
                     else:
                         self.report({'ERROR'}, "No mesh data was found")

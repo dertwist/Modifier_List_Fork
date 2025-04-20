@@ -114,10 +114,12 @@ def _modifier_search_and_menu(layout, object, new_menu=False):
         row.prop_search(ml_props, "modifier_to_add_from_search", ml_props, "volume_modifiers",
                         text="", icon='MODIFIER')
 
-    sub = row.row(align=True)
-    sub.menu("OBJECT_MT_ml_add_modifier_menu")
     if new_menu:
-        sub.operator("wm.call_menu", text="", icon='ADD').name = "OBJECT_MT_modifier_add"
+        sub = row.row(align=True)
+    else:
+        sub = row.row(align=False)
+    sub.menu("OBJECT_MT_ml_add_modifier_menu")
+    sub.operator("wm.call_menu", text="", icon='ADD').name = "OBJECT_MT_modifier_add"
     return sub
 
 
@@ -704,7 +706,7 @@ def time_to_string(t):
         #if modifer is disabled, show 0.0 ms
         if t == 0.0015:
             return f'0.0 ms'
-        # Formats time in seconds to the nearest sensible unit
+        # Formats time in seconds to the nearest unit
         units = {3600.: 'h', 60.: 'm', 1.: 's', .001: 'ms'}
         for factor in units.keys():
             if t >= factor:
@@ -718,7 +720,7 @@ def time_to_string(t):
         #if modifer is disabled, show 0.0s
         if t == 0.0015:
             return f'0.0s'
-        # Format it to only .s if under a minute with max one decimal
+        # Format it .s if under a minute with max one decimal
         if t < 60:
             if t < 0.1:
                 if t < 0.01:
@@ -787,13 +789,17 @@ class OBJECT_UL_modifier_list(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
         global list_of_frozen_modifiers
         prefs = bpy.context.preferences.addons[base_package].preferences
+        show_times = bpy.context.scene.show_timings
 
         mod = item
-        if bpy.context.scene.show_timings:
-                text = _get_modifier_times(mod)
-                text = time_to_string(text)
+        over_100ms = False
+        if show_times:
+                text_modifier_left = _get_modifier_times(mod)
+                if text_modifier_left > 0.1:
+                    over_100ms = True
+                text_modifier_left = time_to_string(text_modifier_left)
         else:
-            text = ""
+            text_modifier_left = ""
 
         is_edit_mesh_modifies = active_is_edit_mesh_modifier(mod)
         no_edit_mesh_modifier_found = True
@@ -816,7 +822,14 @@ class OBJECT_UL_modifier_list(UIList):
                 # cehcl if node
                 if not is_edit_mesh_modifies:
                     row.label(text="", translate=False, icon_value=layout.icon(mod))
-                    layout.prop(mod, "name", text=text, emboss=False)
+                    if show_times:
+                        row_label = row.row(align=True)
+                        if over_100ms:
+                            row_label.alert = True
+                        row_label.scale_x = 0.6
+                        row_label.label(text=text_modifier_left)
+                    
+                    layout.prop(mod, "name", text="", emboss=False)
                     # only draw after the last edit mesh modifier
                     if not mod in list_of_frozen_modifiers:
                         if prefs.classic_display_order:
@@ -834,7 +847,7 @@ class OBJECT_UL_modifier_list(UIList):
                         layout.enabled = False
                         is_frozen = True
 
-                    layout.prop(mod, "name", text=text, emboss=False)
+                    layout.prop(mod, "name", text=text_modifier_left, emboss=False)
 
                     row = layout.row(align=True)
                     sub = row.row(align=True)
@@ -868,10 +881,10 @@ class OBJECT_UL_modifier_list(UIList):
 
 
     def register():
-        bpy.types.Scene.show_timings = bpy.props.BoolProperty(default=False)
+        bpy.types.Scene.show_timings = bpy.props.BoolProperty(default=True)
         bpy.types.Scene.compact_timing = bpy.props.BoolProperty(default=False)
         bpy.types.Scene.total_time = bpy.props.BoolProperty(default=False)
-        bpy.types.PROPERTIES_PT_options.append(draw_time_props)
+        bpy.types.PROPERTIES_PT_options.prepend(draw_time_props)
         
     def unregister():
         bpy.types.PROPERTIES_PT_options.remove(draw_time_props)
@@ -914,6 +927,7 @@ class ModifierExtrasBase:
         layout = self.layout
         layout.ui_units_x = 11
 
+        layout.operator("object.show_references_popup", icon ='PRESET')
         if layout_style_is_stack:
             if not prefs.show_batch_ops_in_main_layout_with_stack_style:
                 row = layout.row(align=True)

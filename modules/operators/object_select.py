@@ -1,7 +1,7 @@
 import bpy
 from bpy.props import *
 from bpy.types import Operator
-
+from ..utils import force_show_object
 
 class OBJECT_OT_ml_select(Operator):
     bl_idname = "object.ml_select"
@@ -25,16 +25,8 @@ class OBJECT_OT_ml_select(Operator):
             context.view_layer.objects.active = ob
 
         if self.unhide_object:
-            obj_collection = ob.users_collection[0]
-
-            if obj_collection.hide_viewport == True or context.view_layer.layer_collection.children[obj_collection.name].hide_viewport == True:
-                obj_collection.hide_viewport = False
-                context.view_layer.layer_collection.children[obj_collection.name].hide_viewport = False
-                for obj in obj_collection.objects:
-                    obj.hide_set(True)
-            ob.hide_set(False)
+            force_show_object(ob, select=False)
             
-        ob.hide_viewport = False
         ob.select_set(True)
 
         return {'FINISHED'}

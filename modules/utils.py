@@ -601,3 +601,33 @@ def delete_ml_vertex_group(object, vertex_group_name):
             if vertex_group_name in vert_groups:
                 vert_group = vert_groups[vertex_group_name]
                 vert_groups.remove(vert_group)
+
+def force_show_object(ob, select=True):
+    obj_collection = ob.users_collection[0]
+
+    if obj_collection.hide_viewport == True or bpy.context.view_layer.layer_collection.children[obj_collection.name].hide_viewport == True:
+        obj_collection.hide_viewport = False
+        bpy.context.view_layer.layer_collection.children[obj_collection.name].hide_viewport = False
+        for obj in obj_collection.objects:
+            obj.hide_set(True)
+    ob.hide_set(False)
+    ob.hide_viewport = False
+
+    if select:
+        ob.select_set(True)
+
+    # handle if the object is not in isulate mode
+    def get_local_view(self):    
+        areas = bpy.context.workspace.screens[0].areas               
+        for area in areas:
+            for space in area.spaces:    
+                if space.type == 'VIEW_3D':
+                    r=not space.local_view  
+                    return not r
+    is_isolate_mode = get_local_view(bpy.context)   
+
+    if is_isolate_mode:
+        for area in bpy.context.screen.areas:
+            for space in area.spaces:
+                if space.type == 'VIEW_3D':
+                    (ob.local_view_set(space, True))
