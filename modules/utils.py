@@ -296,7 +296,7 @@ def _match_gizmo_size_to_object(gizmo_object, object):
     gizmo_object.empty_display_size = max_dim_with_offset
 
 
-def _create_gizmo_object(self, context, modifier, placement='OBJECT'):
+def _create_gizmo_object(self, context, modifier, placement='OBJECT', ob=None):
     """Create a gizmo (empty) object.
 
     placement: enum in {'CURSOR', 'OBJECT', 'WORLD_ORIGIN'}
@@ -308,7 +308,8 @@ def _create_gizmo_object(self, context, modifier, placement='OBJECT'):
     ml_col.objects.link(gizmo_ob)
 
     prefs = bpy.context.preferences.addons[base_package].preferences
-    ob = get_ml_active_object()
+    if ob is None:
+        ob = get_ml_active_object()
 
     # Only use update_from_editmode if necessary
     if placement == 'OBJECT' or prefs.match_gizmo_size_to_object:
@@ -436,7 +437,7 @@ def _fit_lattice_to_object(object, lattice_object):
 
     _set_lattice_points(lattice_object, dims)
 
-def active_is_edit_mesh_modifier(mod):
+def is_edit_mesh_modifier(mod):
     is_edit_mesh_modifies = False
     if mod.type == 'NODES':
         if mod.node_group:
@@ -502,12 +503,13 @@ def _create_lattice_gizmo_object(self, context, modifier):
 
 # ==========
 
-def assign_gizmo_object_to_modifier(self, context, modifier, placement='OBJECT'):
+def assign_gizmo_object_to_modifier(self, context, modifier, placement='OBJECT', ob=None):
     """Assign a gizmo object to the correct property of the given modifier.
 
     placement: enum in {'CURSOR', 'OBJECT', 'WORLD_ORIGIN'}
     """
-    ob = get_ml_active_object()
+    if not ob:
+        ob = get_ml_active_object()
     mod = ob.modifiers[modifier]
     prefs = bpy.context.preferences.addons[base_package].preferences
     parent_gizmo = prefs.parent_new_gizmo_to_object
@@ -519,7 +521,7 @@ def assign_gizmo_object_to_modifier(self, context, modifier, placement='OBJECT')
 
         for p in projectors[0:projector_count]:
             if not p.object:
-                gizmo_ob = _create_gizmo_object(self, context, modifier, placement)
+                gizmo_ob = _create_gizmo_object(self, context, modifier, placement, ob)
                 p.object = gizmo_ob
                 if parent_gizmo:
                     gizmo_ob.parent = ob
@@ -532,7 +534,7 @@ def assign_gizmo_object_to_modifier(self, context, modifier, placement='OBJECT')
     if mod.type == 'LATTICE':
         gizmo_ob = _create_lattice_gizmo_object(self, context, modifier)
     else:
-        gizmo_ob = _create_gizmo_object(self, context, modifier, placement)
+        gizmo_ob = _create_gizmo_object(self, context, modifier, placement, ob)
 
     if mod.type == 'ARRAY':
         mod.use_constant_offset = False

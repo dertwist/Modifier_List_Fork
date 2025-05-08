@@ -26,6 +26,7 @@ class OBJECT_OT_ml_modifier_add(Operator):
     after_active: BoolProperty(name="After Active", default=False)
     add_gizmo: BoolProperty(default=False, options={'HIDDEN', 'SKIP_SAVE'})
     use_world_origin: BoolProperty(default=False, options={'HIDDEN', 'SKIP_SAVE'})
+    use_selected_objects: BoolProperty(default=False, options={'HIDDEN', 'SKIP_SAVE'})
 
     @classmethod
     def poll(cls, context):
@@ -36,8 +37,6 @@ class OBJECT_OT_ml_modifier_add(Operator):
         ob = get_ml_active_object()
         mod = None
 
-        # Store initial active_index
-        init_active_mod_index = ob.ml_modifier_active_index
 
         # Make adding modifiers possible when an object is pinned
         
@@ -58,79 +57,91 @@ class OBJECT_OT_ml_modifier_add(Operator):
             return {'FINISHED'}
         
         ### Draise - Added the "with" for compatibility with 4.0.0
-        try:
-            with context.temp_override(id=ob): 
-                bpy.ops.object.modifier_add('INVOKE_DEFAULT', type=self.modifier_type)
-        except TypeError:
-            for mod in ALL_MODIFIERS_NAMES_ICONS_TYPES:
-                if mod[2] == self.modifier_type:
-                    modifier_name = mod[0]
-                    break
-            self.report({'ERROR'}, f"Cannot add {modifier_name} modifier for this object type")
-            return {'FINISHED'}
-        # Non-editable override objects don't support adding modifiers
-        except RuntimeError as rte:
-            self.report(type={'ERROR'}, message=str(rte).replace("Error: ", ""))
-            return {'FINISHED'}
+        selected = {ob}
 
-        self.set_modifier_default_settings()
+        unsuported_mod = False
+        if self.use_selected_objects:
+            selected.update(context.selected_objects)
+        for ob in selected:
+            # Store initial active_index
+            init_active_mod_index = ob.ml_modifier_active_index
+            
+            try:
+                for mod in ALL_MODIFIERS_NAMES_ICONS_TYPES:
+                    if mod[2] == self.modifier_type:
+                        modifier_name = mod[0]
+                new_mod = ob.modifiers.new(name=modifier_name, type=self.modifier_type)
+                if new_mod is None:
+                    unsuported_mod = True
+                    continue
 
-        # Set correct active_mod index
-        pinned_modifiers_amount = sum(mod.use_pin_to_last for mod in ob.modifiers)
+            # Non-editable override objects don't support adding modifiers
+            except RuntimeError as rte:
+                self.report(type={'ERROR'}, message=str(rte).replace("Error: ", ""))
+                return {'FINISHED'}
 
-        max_active_mod_index = len(ob.modifiers) - 1
-        ob.ml_modifier_active_index = max_active_mod_index - pinned_modifiers_amount
+            self.set_modifier_default_settings(ob, new_mod)
 
-        # === Add a gizmo object ===
-        #added extra check, since sometimes it can give a error, for some reson
-        if ob.modifiers:
-            mod = ob.modifiers[-1 - pinned_modifiers_amount] 
+            # Set correct active_mod index
+            pinned_modifiers_amount = sum(mod.use_pin_to_last for mod in ob.modifiers)
 
-        if self.add_gizmo and ob.type in {'CURVE', 'FONT', 'LATTICE', 'MESH', 'SURFACE'}:
-            if mod.type in HAVE_GIZMO_PROPERTY or mod.type == 'UV_PROJECT':
-                placement = 'WORLD_ORIGIN' if self.use_world_origin else 'OBJECT'
-                assign_gizmo_object_to_modifier(self, context, mod.name, placement=placement)
+            max_active_mod_index = len(ob.modifiers) - 1
+            ob.ml_modifier_active_index = max_active_mod_index - pinned_modifiers_amount
 
-        # === Move modifier into place ===
-        # This doesn't work with library overrides because the context
-        # of the layout can be wrong.
-        # layout.context_pointer_set("modifier", active_modifier) is
-        # used to set the modifier for the context of the layout and
-        # modifier_move_to_index seems to use that modifier in it's poll,
-        # instead of the one passed as an argument. And linked modifiers
-        # can't be moved.
-        if ob.override_library:
-            return {'FINISHED'}
+            # === Add a gizmo object ===
+            #added extra check, since sometimes it can give a error, for some reson
+            if ob.modifiers:
+                mod = ob.modifiers[-1 - pinned_modifiers_amount] 
 
-        prefs = bpy.context.preferences.addons[base_package].preferences
-        move = not self.use_world_origin if prefs.insert_modifier_after_active else self.use_world_origin
-        if self.after_active: # Option to override the preference
-            move = True
+            if self.add_gizmo and ob.type in {'CURVE', 'FONT', 'LATTICE', 'MESH', 'SURFACE'}:
+                if mod.type in HAVE_GIZMO_PROPERTY or mod.type == 'UV_PROJECT':
+                    placement = 'WORLD_ORIGIN' if self.use_world_origin else 'OBJECT'
+                    assign_gizmo_object_to_modifier(self, context, mod.name, placement=placement, ob=ob)
 
-        if move and mod:
-            if init_active_mod_index != max_active_mod_index:
-                bpy.ops.object.modifier_move_to_index(modifier=mod.name,
-                                                      index=init_active_mod_index + 1)
-            if init_active_mod_index < max_active_mod_index - 1:
-                ob.ml_modifier_active_index = init_active_mod_index + 1
+            # === Move modifier into place ===
+            # This doesn't work with library overrides because the context
+            # of the layout can be wrong.
+            # layout.context_pointer_set("modifier", active_modifier) is
+            # used to set the modifier for the context of the layout and
+            # modifier_move_to_index seems to use that modifier in it's poll,
+            # instead of the one passed as an argument. And linked modifiers
+            # can't be moved.
+            if ob.override_library:
+                return {'FINISHED'}
+
+            prefs = bpy.context.preferences.addons[base_package].preferences
+            move = not self.use_world_origin if prefs.insert_modifier_after_active else self.use_world_origin
+            if self.after_active: # Option to override the preference
+                move = True
+
+            if move and mod:
+                if init_active_mod_index != max_active_mod_index:
+                    active_index = ob.modifiers.find(new_mod.name)
+                    ob.modifiers.move(active_index, init_active_mod_index + 1)
+                if init_active_mod_index < max_active_mod_index - 1:
+                    ob.ml_modifier_active_index = init_active_mod_index + 1
+       
+        if unsuported_mod:
+            self.report({'ERROR'}, f"Cannot add {modifier_name} modifier for one or more object types")
 
         return {'FINISHED'}
 
     def invoke(self, context, event):
         self.use_world_origin = event.ctrl
         self.add_gizmo = event.shift
-        self.alt = event.alt # NOTE: never used?
+        self.use_selected_objects = event.alt
 
         return self.execute(context)
 
-    def set_modifier_default_settings(self):
-        mod = get_ml_active_object().modifiers[-1]
+    def set_modifier_default_settings(self, ob, new_mod):
+        mod = new_mod
 
-        #need to take into account if the object has a pinned modifier
-        index = -1
-        while mod.use_pin_to_last:
-            index -= 1
-            mod = get_ml_active_object().modifiers[index]
+        # #need to take into account if the object has a pinned modifier
+        # seems to not be needed anymore since we do not use bpy.ops anymore
+        # index = -1
+        # while mod and mod.use_pin_to_last:
+        #     index -= 1
+        #     mod = get_ml_active_object().modifiers[index]
 
         mod_type = mod.type         
 

@@ -25,7 +25,7 @@ from ..utils import (
     get_ml_active_object,
     is_modifier_disabled,
     is_modifier_local,
-    active_is_edit_mesh_modifier
+    is_edit_mesh_modifier
 )
 
 
@@ -322,7 +322,7 @@ def _classic_modifier_visibility_buttons(modifier, layout, pcoll, use_in_list=Fa
     # show_render and show_viewport
     sub = row.row(align=True)
 
-    is_edit_mesh_modifies = active_is_edit_mesh_modifier(modifier)
+    is_edit_mesh_modifies = is_edit_mesh_modifier(modifier)
 
     if is_edit_mesh_modifies:
         sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
@@ -396,7 +396,7 @@ def _modifier_visibility_buttons(modifier, layout, pcoll, use_in_list=False):
     # show_render and show_viewport
     sub = row.row(align=True)
 
-    is_edit_mesh_modifies = active_is_edit_mesh_modifier(modifier)
+    is_edit_mesh_modifies = is_edit_mesh_modifier(modifier)
 
     if is_edit_mesh_modifies:
         sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
@@ -703,17 +703,20 @@ def draw_time_props(self, context):
 
 def time_to_string(t):
     if bpy.context.scene.compact_timing == False:
-        #if modifer is disabled, show 0.0 ms
+        # If modifier is disabled, show 0.0 ms
         if t == 0.0015:
             return f'0.0 ms'
         # Formats time in seconds to the nearest unit
-        units = {3600.: 'h', 60.: 'm', 1.: 's', .001: 'ms'}
+        units = {3600.: 'h', 60.: 'min', 1.: 'sec', .001: 'ms'}
         for factor in units.keys():
             if t >= factor:
-                return f'{t/factor:.3g} {units[factor]}'
+                value = f'{t/factor:.3g}'
+                if len(value) > 4:  # Ensure max 6 characters including unit
+                    value = f'{t/factor:.2g}'
+                return f'{value} {units[factor]}'
 
         if t >= 1e-4:
-            return f'{t/factor:.3g} {units[factor]}'
+            return f'{t/factor:.2g} {units[factor]}'
         else:
             return f'<0.1 ms'
     else:
@@ -761,7 +764,7 @@ def _get_all_modifier_times():
     
 prev_ms_times = {}
 
-def _get_modifier_times(mod):
+def _get_modifier_times(mod): # we should not call it per modifier, but only once per object
     global prev_ms_times
     obj = get_ml_active_object()
 
@@ -801,7 +804,7 @@ class OBJECT_UL_modifier_list(UIList):
         else:
             text_modifier_left = ""
 
-        is_edit_mesh_modifies = active_is_edit_mesh_modifier(mod)
+        is_edit_mesh_modifies = is_edit_mesh_modifier(mod)
         no_edit_mesh_modifier_found = True
 
         for i, m in enumerate(data.modifiers):
@@ -844,33 +847,35 @@ class OBJECT_UL_modifier_list(UIList):
                     row.label(text="", translate=False, icon="EDITMODE_HLT")
                     is_frozen = False
                     if mod in list_of_frozen_modifiers:
-                        layout.enabled = False
+                        row.enabled = False
                         is_frozen = True
 
-                    layout.prop(mod, "name", text=text_modifier_left, emboss=False)
+                    row.prop(mod, "name", text=text_modifier_left, emboss=False)
 
                     row = layout.row(align=True)
                     sub = row.row(align=True)
-                    icon_toggle = "RESTRICT_VIEW_OFF"
-                    if mod.show_viewport:
-                        icon_toggle = "RESTRICT_VIEW_ON"
+                    sub.enabled = True  
+                    icon_toggle = "RESTRICT_VIEW_ON"
+                    if mod.show_render:
+                        icon_toggle = "RESTRICT_VIEW_OFF"
                     pcoll = get_icons()
                     empy_icon = pcoll['EMPTY_SPACE']
                     
+                    froze_row = row.row(align=True)
+                    froze_row.enabled = False
                     if is_frozen:
-                        layout.enabled = False
-                        layout.label(text="", translate=False, icon="FREEZE")
+                        # row.enabled = False
+                        froze_row.label(text="", translate=False, icon="FREEZE")
+                    else:
+                        froze_row.label(text="", translate=False, icon_value=empy_icon.icon_id)
 
                     # future toggle mode?
-                    # if mod.show_viewport:
-                    #     sub.operator("object.edit_mesh_clear", text="", icon=icon_toggle, emboss = False)
-                    # else:
-                    #     sub.operator("object.edit_mesh_clear", text="", icon=icon_toggle, emboss = False).toggle = True
+                    sub.operator("object.toggle_edit_mesh_visibility", text="", icon=icon_toggle, emboss = False).mod_name = mod.name
                     # sub.operator("object.edit_mesh_clear", text="", icon='X', emboss = False)
                     
                     # if not mod in list_of_frozen_modifiers: # does not work if clicking if not active modifier!
                     #     sub.operator("object.edit_mesh_clear", text="", icon='X', emboss = False)
-                    sub.label(text="", icon_value=empy_icon.icon_id)
+                    # sub.label(text="", icon_value=empy_icon.icon_id)
 
             else:   
                 layout.label(text="", translate=False, icon_value=icon)
@@ -1037,7 +1042,7 @@ def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=Fals
     active_mod_index = ob.ml_modifier_active_index
     if ob.modifiers:
         active_mod = ob.modifiers[active_mod_index]
-        is_edit_mesh_modifies = active_is_edit_mesh_modifier(active_mod)
+        is_edit_mesh_modifies = is_edit_mesh_modifier(active_mod)
         
     prefs = bpy.context.preferences.addons[base_package].preferences
     pcoll = get_icons()

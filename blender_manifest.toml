@@ -1,13 +1,13 @@
 schema_version = "1.0.0"
 
 id = "Modifier_List_Fork"
-version = "1.9.85"
+version = "1.9.86"
 name = "Modifier List"
 tagline = "Enhanced Modifier UI/Features, now with Edit Mesh Modifier"
 maintainer = "Antti Tikka, Draise, Dan-Gry"
 type = "add-on"
 
-website = "https://github.com/Dangry98/modifier_list-for-Blender-4.0"
+website = "https://blenderartists.org/t/modifier-list-for-blender-4-2-addon-fork/1512291"
 
 tags = ["Modeling", "User Interface"]
 
