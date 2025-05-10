@@ -35,11 +35,12 @@ def fill_prefs(prefs_dict, prefs):
 
         prop_in_prefs = getattr(prefs, prop)
 
+        if prop == "flip_axis" and prefs_dict[prop] == []: # fixes error if old prefs are used in 4.4
+            continue
+        
         if isinstance(prop_in_prefs, PropertyGroup):
             fill_prefs(prefs_dict[prop], prop_in_prefs)
         else:
-            if prop == "flip_axis" and prefs_dict[prop] == []: # fixes error if old prefs are used in 4.4
-                continue
             setattr(prefs, prop, ensure_valid_read_value(prefs_dict[prop]))
 
 
