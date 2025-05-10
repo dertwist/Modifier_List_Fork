@@ -501,8 +501,6 @@ def draw_edit_mesh_modifier(self, context):
     if prefs.properties_editor_style == 'LIST' and obj and obj.type == 'MESH':
         layout = self.layout
         layout.operator("object.edit_mesh_modifier", icon='EDITMODE_HLT')
-
-
 class EditmeshClear(bpy.types.Operator):
     bl_idname = "object.edit_mesh_clear"
     bl_label = "Clear edit mesh"
@@ -576,90 +574,105 @@ class EditmeshClear(bpy.types.Operator):
    
         return {'FINISHED'}
 
-
 class EditmeshModifier(bpy.types.Operator):
     bl_idname = "object.edit_mesh_modifier"
     bl_label = "Edit Mesh"
     bl_description = """Adds a Edit Mesh Modifier
 
-    Ctrl - Add after active modifier"""
+    Ctrl - Add after active modifier
+    Alt - Add to all selected objects"""
     bl_options = {'REGISTER', 'UNDO'}
 
     insert_after_active: bpy.props.BoolProperty(default=False, options={'HIDDEN', 'SKIP_SAVE'}) #type: ignore
+    use_selected_objects: bpy.props.BoolProperty(default=False, options={'HIDDEN', 'SKIP_SAVE'}) # type: ignore
 
     def invoke(self, context, event):
         global ev 
         ev = []
         if event.ctrl:
+            self.insert_after_active = True
             ev.append("CTRL")
+        if event.alt:
+            self.use_selected_objects = True
+            ev.append("ALT")
         
         return self.execute(context)
 
     def execute(self, context):
         global ev
-        obj = context.active_object
-    
-        if obj.mode == 'EDIT':
-            obj.update_from_editmode()  #update mesh data, so it works in edit mode
-           
-        backup_mesh_data = obj.data.copy()
-        backup_mesh_data.use_fake_user = True
-        base_name = obj.data.name.split("_edit_mesh_")[0]
-        backup_mesh_data.name = base_name + "_edit_mesh_" + str(len([block for block in bpy.data.meshes if block.name.startswith(base_name + "_edit_mesh_")]))
-
-        # add obj.data as a new object data block, to be used as backup keeping the original mesh data
-        index = 0
-        while "edit_mesh_data_" + str(index) in obj:
-            index += 1
+        if not context.active_object:
+            self.report({'ERROR'}, "No active object found")
+            return {'CANCELLED'}
         
-        # Create a custom property for the object
-        prop_name = "edit_mesh_data_" +  str(index)
-        setattr(bpy.types.Object, prop_name, bpy.props.PointerProperty(
-            name="Edit Mesh Data" + str(index), 
-            description=str(index),
-            type=bpy.types.Mesh
-        ))
-        
-        # Assign the custom property to the object
-        setattr(obj, prop_name, backup_mesh_data)
+        active = context.active_object
+        selected = {active}
+        if self.use_selected_objects:
+            selected.update(context.selected_objects)
+            
+        for obj in selected:
+            if obj.type != 'MESH':
+                continue
+            if obj.mode == 'EDIT':
+                obj.update_from_editmode()  #update mesh data, so it works in edit mode
+            
+            backup_mesh_data = obj.data.copy()
+            backup_mesh_data.use_fake_user = True
+            base_name = obj.data.name.split("_edit_mesh_")[0]
+            backup_mesh_data.name = base_name + "_edit_mesh_" + str(len([block for block in bpy.data.meshes if block.name.startswith(base_name + "_edit_mesh_")]))
 
-        mod_is_visiable = []
+            # add obj.data as a new object data block, to be used as backup keeping the original mesh data
+            index = 0
+            while "edit_mesh_data_" + str(index) in obj:
+                index += 1
+            
+            # Create a custom property for the object
+            prop_name = "edit_mesh_data_" +  str(index)
+            setattr(bpy.types.Object, prop_name, bpy.props.PointerProperty(
+                name="Edit Mesh Data" + str(index), 
+                description=str(index),
+                type=bpy.types.Mesh
+            ))
+            
+            # Assign the custom property to the object
+            setattr(obj, prop_name, backup_mesh_data)
 
-        if "CTRL" in ev:
-            active_mod_index = obj.ml_modifier_active_index
-            modifier_index_map = {mod: i for i, mod in enumerate(obj.modifiers)}
+            mod_is_visiable = []
 
-            for mod in reversed(obj.modifiers):
-                if modifier_index_map[mod] == active_mod_index:
-                    break
-                if mod.show_viewport:
-                    mod_is_visiable.append(mod)
-                mod.show_viewport = False
-                mod.show_render = False
-        
-        obj = apply_modifiers(obj)  # apply all modifiers with current modifers, either in edit mode or object mode
+            if self.insert_after_active or "CTRL" in ev:
+                active_mod_index = obj.ml_modifier_active_index
+                modifier_index_map = {mod: i for i, mod in enumerate(obj.modifiers)}
 
-        for mod in obj.modifiers:
-            if mod.use_pin_to_last:
-                mod.use_pin_to_last = False # set all pined modifes to unpinned, since otherwise it will be before the edit mesh modifier
+                for mod in reversed(obj.modifiers):
+                    if modifier_index_map[mod] == active_mod_index:
+                        break
+                    if mod.show_viewport:
+                        mod_is_visiable.append(mod)
+                    mod.show_viewport = False
+                    mod.show_render = False
+            
+            obj = apply_modifiers(obj)  # apply all modifiers with current modifers, either in edit mode or object mode
 
-        if not "Edit Mesh" in bpy.data.node_groups:
-            edit_mesh_node_group()
+            for mod in obj.modifiers:
+                if mod.use_pin_to_last:
+                    mod.use_pin_to_last = False # set all pined modifes to unpinned, since otherwise it will be before the edit mesh modifier
 
-        edit_mesh_modifier = obj.modifiers.new(name="Edit Mesh", type='NODES')
-        if "CTRL" in ev: # move the edit_mesh_modifier after the active modifier
-            obj.modifiers.move(len(obj.modifiers) - 1, active_mod_index + 1)
+            if not "Edit Mesh" in bpy.data.node_groups:
+                edit_mesh_node_group()
 
-        # add new node group to the modifier
-        edit_mesh_modifier.node_group = bpy.data.node_groups['Edit Mesh']
-        edit_mesh_modifier.show_group_selector = False
-        edit_mesh_modifier["Socket_2"] = index # we store a index of the number of the mesh data block
-        edit_mesh_modifier.show_viewport = False
+            edit_mesh_modifier = obj.modifiers.new(name="Edit Mesh", type='NODES')
+            if "CTRL" in ev: # move the edit_mesh_modifier after the active modifier
+                obj.modifiers.move(len(obj.modifiers) - 1, active_mod_index + 1)
 
-        if mod_is_visiable:
-            for mod in mod_is_visiable:  # restore the visibility of the modifiers
-                mod.show_viewport = True
-                mod.show_render = True
+            # add new node group to the modifier
+            edit_mesh_modifier.node_group = bpy.data.node_groups['Edit Mesh']
+            edit_mesh_modifier.show_group_selector = False
+            edit_mesh_modifier["Socket_2"] = index # we store a index of the number of the mesh data block
+            edit_mesh_modifier.show_viewport = False
+
+            if mod_is_visiable:
+                for mod in mod_is_visiable:  # restore the visibility of the modifiers
+                    mod.show_viewport = True
+                    mod.show_render = True
         return {'FINISHED'}
         
     def register():

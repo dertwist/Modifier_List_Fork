@@ -2113,7 +2113,7 @@ class DATA_PT_modifiers:
                     row.label(text="", icon='BLANK1')
 
                 else:
-                    if input_info["accepts_attribute"]:
+                    if input_info["accepts_attribute"] and input_info["type"] != 'MENU': # menus should never show the attribute buttons # fixes: https://github.com/Dangry98/Modifier_List_Fork/issues/44
                         if md[f"{prop_id}_use_attribute"] == 1:
                             attr_prop_name = f'["{prop_id}_attribute_name"]'
                             prop_row.prop(md, attr_prop_name, text="")
@@ -2128,8 +2128,7 @@ class DATA_PT_modifiers:
                                 text = " "
                             col.prop(md, f'["{prop_id}"]', text=text)
 
-                        op = row.operator("object.geometry_nodes_input_attribute_toggle",
-                                        text="", icon='SPREADSHEET')
+                        op = row.operator("object.geometry_nodes_input_attribute_toggle", text="", icon='SPREADSHEET')
                         op.input_name = prop_id
                         op.modifier_name = md.name
                         

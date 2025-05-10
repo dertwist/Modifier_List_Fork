@@ -817,60 +817,71 @@ class OBJECT_UL_modifier_list(UIList):
         
         if no_edit_mesh_modifier_found:
             list_of_frozen_modifiers = []
+
+        pcoll = get_icons()
+        empy_icon = pcoll['EMPTY_SPACE']
         
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             if mod:       
                 row = layout.row()
                 row.alert = is_modifier_disabled(mod)
-                # cehcl if node
+
                 if not is_edit_mesh_modifies:
                     row.label(text="", translate=False, icon_value=layout.icon(mod))
-                    if show_times:
-                        row_label = row.row(align=True)
-                        if over_100ms:
-                            row_label.alert = True
-                        row_label.scale_x = 0.6
-                        row_label.label(text=text_modifier_left)
-                    
-                    layout.prop(mod, "name", text="", emboss=False)
-                    # only draw after the last edit mesh modifier
-                    if not mod in list_of_frozen_modifiers:
-                        if prefs.classic_display_order:
-                            _classic_modifier_visibility_buttons(mod, layout, get_icons(), use_in_list=True)
-                        else:
-                            _modifier_visibility_buttons(mod, layout, get_icons(), use_in_list=True)
-                    else:
-                        layout.enabled = False
-                        layout.label(text="", translate=False, icon="FREEZE")
-
                 else:
                     row.label(text="", translate=False, icon="EDITMODE_HLT")
-                    is_frozen = False
-                    if mod in list_of_frozen_modifiers:
-                        row.enabled = False
-                        is_frozen = True
 
-                    row.prop(mod, "name", text=text_modifier_left, emboss=False)
+                if show_times:
+                    row_label = row.row(align=True)
+                    row_label.scale_x = 0.65
+                    if over_100ms:
+                        row_label.alert = True
+                    row_label.label(text=text_modifier_left)
+                
+                layout.prop(mod, "name", text="", emboss=False)
+                # only draw after the last edit mesh modifier
+                if is_edit_mesh_modifies and mod not in list_of_frozen_modifiers:
+                    layout.label(text="", translate=False, icon_value=empy_icon.icon_id)
+                    layout.label(text="", translate=False, icon_value=empy_icon.icon_id)
 
-                    row = layout.row(align=True)
-                    sub = row.row(align=True)
-                    sub.enabled = True  
-                    icon_toggle = "RESTRICT_VIEW_ON"
-                    if mod.show_render:
-                        icon_toggle = "RESTRICT_VIEW_OFF"
-                    pcoll = get_icons()
-                    empy_icon = pcoll['EMPTY_SPACE']
-                    
-                    froze_row = row.row(align=True)
-                    froze_row.enabled = False
-                    if is_frozen:
-                        # row.enabled = False
-                        froze_row.label(text="", translate=False, icon="FREEZE")
+                if not mod in list_of_frozen_modifiers:
+                    if prefs.classic_display_order:
+                        _classic_modifier_visibility_buttons(mod, layout, get_icons(), use_in_list=True)
                     else:
-                        froze_row.label(text="", translate=False, icon_value=empy_icon.icon_id)
+                        _modifier_visibility_buttons(mod, layout, get_icons(), use_in_list=True)
+                else:
+                    layout.label(text="", translate=False, icon_value=empy_icon.icon_id)
+                    layout.label(text="", translate=False, icon_value=empy_icon.icon_id)
+                    layout.enabled = False
+                    layout.label(text="", translate=False, icon="FREEZE")
+
+                    # row.label(text="", translate=False, icon="EDITMODE_HLT")
+                    # is_frozen = False
+                    # if mod in list_of_frozen_modifiers:
+                    #     row.enabled = False
+                    #     is_frozen = True
+
+                    # row.prop(mod, "name", text=text_modifier_left, emboss=False)
+
+                    # # row = layout.row(align=True)
+                    # # sub = row.row(align=True)
+                    # # sub.enabled = True  
+                    # # icon_toggle = "RESTRICT_VIEW_ON"
+                    # # if mod.show_render:
+                    # #     icon_toggle = "RESTRICT_VIEW_OFF"
+                    # pcoll = get_icons()
+                    # empy_icon = pcoll['EMPTY_SPACE']
+                    
+                    # froze_row = row.row(align=True)
+                    # froze_row.enabled = False
+                    # if is_frozen:
+                    #     # row.enabled = False
+                    #     froze_row.label(text="", translate=False, icon="FREEZE")
+                    # else:
+                        # froze_row.label(text="", translate=False, icon_value=empy_icon.icon_id)
 
                     # future toggle mode?
-                    sub.operator("object.toggle_edit_mesh_visibility", text="", icon=icon_toggle, emboss = False).mod_name = mod.name
+                    # sub.operator("object.toggle_edit_mesh_visibility", text="", icon=icon_toggle, emboss = False).mod_name = mod.name
                     # sub.operator("object.edit_mesh_clear", text="", icon='X', emboss = False)
                     
                     # if not mod in list_of_frozen_modifiers: # does not work if clicking if not active modifier!

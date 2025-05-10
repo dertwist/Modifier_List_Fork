@@ -24,6 +24,14 @@ def sync_bpy_object_props(source, dest):
 
 # ======================================================================
 
+def active_is_edit_mesh_modifier(mod):
+    is_edit_mesh_modifies = False
+    if mod.type == 'NODES':
+        if mod.node_group:
+            if "Edit Mesh" in mod.node_group.name:
+                is_edit_mesh_modifies = True
+    return is_edit_mesh_modifies
+
 def object_type_has_modifiers(object):
     obs_with_mods = {
         'MESH',
