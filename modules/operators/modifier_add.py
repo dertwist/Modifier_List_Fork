@@ -2,7 +2,11 @@ import bpy
 from bpy.props import *
 from bpy.types import Operator
 
-from ..modifier_categories import ALL_MODIFIERS_NAMES_ICONS_TYPES, HAVE_GIZMO_PROPERTY
+from ..modifier_categories import (
+    ALL_MODIFIERS_NAMES_ICONS_TYPES, 
+    HAVE_GIZMO_PROPERTY,
+    get_supported_object_types_for_modifier
+)
 from ..utils import get_ml_active_object, assign_gizmo_object_to_modifier
 
 
@@ -47,7 +51,31 @@ class OBJECT_OT_ml_modifier_add(Operator):
                 if mod[2] == self.modifier_type:
                     modifier_name = mod[0]
                     break
-            self.report({'ERROR'}, f"Cannot add {modifier_name} modifier for this object type")
+            
+            # Provide more specific error message based on object type and modifier
+            object_type = ob.type
+            supported_types = []
+            
+            # Check which object types support this modifier
+            if self.modifier_type == 'ARRAY':
+                supported_types = ['MESH', 'CURVE', 'FONT', 'SURFACE']
+            elif self.modifier_type in {'CLOTH', 'COLLISION', 'DYNAMIC_PAINT', 'EXPLODE', 'FLUID', 'PARTICLE_SYSTEM', 'SOFT_BODY'}:
+                supported_types = ['MESH']
+            elif self.modifier_type == 'NODES':
+                supported_types = ['MESH', 'CURVE', 'FONT', 'CURVES', 'POINTCLOUD', 'VOLUME']
+            elif self.modifier_type in {'MESH_TO_VOLUME'}:
+                supported_types = ['VOLUME']
+            elif self.modifier_type in {'VOLUME_DISPLACE'}:
+                supported_types = ['VOLUME']
+            else:
+                # For other modifiers, provide general message
+                supported_types = ['MESH', 'CURVE', 'FONT', 'SURFACE', 'LATTICE']
+            
+            if supported_types:
+                supported_str = ", ".join(supported_types)
+                self.report({'ERROR'}, f"Cannot add {modifier_name} modifier to {object_type} object. Supported object types: {supported_str}")
+            else:
+                self.report({'ERROR'}, f"Cannot add {modifier_name} modifier for this object type")
             return {'FINISHED'}
         # Non-editable override objects don't support adding modifiers
         except RuntimeError as rte:

@@ -184,6 +184,7 @@ MODIFIER_CLASS_MAP = {
     "SIMPLE_DEFORM": "SimpleDeformModifier",
     "SKIN": "SkinModifier",
     "SMOOTH": "SmoothModifier",
+    "SMOOTH_BY_ANGLE": "SmoothByAngleModifier",
     "SOFT_BODY": "SoftBodyModifier",
     "SOLIDIFY": "SolidifyModifier",
     "SUBSURF": "SubsurfModifier",

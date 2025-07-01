@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "Modifier_List_Fork"
-version = "1.9.88"
+version = "1.9.89"
 name = "Modifier List"
 tagline = "Enhanced Modifier UI/Features, now with Edit Mesh Modifier"
 maintainer = "Antti Tikka, Draise, Dan-Gry"
@@ -11,7 +11,7 @@ website = "https://blenderartists.org/t/modifier-list-for-blender-4-2-addon-fork
 
 tags = ["Modeling", "User Interface"]
 
-blender_version_min = "4.2.0"
+blender_version_min = "4.4.0"
 
 license = [
   "SPDX:GPL-3.0-or-later",

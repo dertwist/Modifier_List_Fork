@@ -1955,6 +1955,10 @@ class DATA_PT_modifiers:
         col.prop(md, "thresh", text="Threshold")
         col.prop(md, "use_face_influence")
 
+    def SMOOTH_BY_ANGLE(self, layout, ob, md):
+        layout.prop(md, "angle")
+        layout.prop(md, "ignore_sharpness")
+
     def MESH_TO_VOLUME(self, layout, ob, md):
         layout.prop(md, "object")
 

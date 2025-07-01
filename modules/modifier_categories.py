@@ -269,3 +269,27 @@ HAVE_GIZMO_PROPERTY = {
     'SIMPLE_DEFORM': "origin",
     'WAVE': "start_position_object"
 }
+
+# === Modifier compatibility with object types ===
+MODIFIER_OBJECT_TYPE_COMPATIBILITY = {
+    'MESH': [mod[2] for mod in MESH_ALL_NAMES_ICONS_TYPES],
+    'CURVE': [mod[2] for mod in CURVE_TEXT_ALL_NAMES_ICONS_TYPES],
+    'FONT': [mod[2] for mod in CURVE_TEXT_ALL_NAMES_ICONS_TYPES],
+    'SURFACE': [mod[2] for mod in SURFACE_ALL_NAMES_ICONS_TYPES],
+    'LATTICE': [mod[2] for mod in LATTICE_ALL_NAMES_ICONS_TYPES],
+    'CURVES': [mod[2] for mod in CURVES_ALL_NAMES_ICONS_TYPES],
+    'POINTCLOUD': [mod[2] for mod in POINTCLOUD_ALL_NAMES_ICONS_TYPES],
+    'VOLUME': [mod[2] for mod in VOLUME_ALL_NAMES_ICONS_TYPES]
+}
+
+def get_supported_object_types_for_modifier(modifier_type):
+    """Returns a list of object types that support the given modifier type."""
+    supported_types = []
+    for obj_type, modifiers in MODIFIER_OBJECT_TYPE_COMPATIBILITY.items():
+        if modifier_type in modifiers:
+            supported_types.append(obj_type)
+    return supported_types
+
+def is_modifier_supported_for_object_type(modifier_type, object_type):
+    """Check if a modifier type is supported for a given object type."""
+    return modifier_type in MODIFIER_OBJECT_TYPE_COMPATIBILITY.get(object_type, [])

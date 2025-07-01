@@ -1,5 +1,12 @@
 # Changelog
 
+## Modifier List 1.9.89 - 2024
+
+New features:
+- Added support for Blender 4.4
+- Added support for the new "Smooth By Angle" modifier introduced in Blender 4.4
+- Updated minimum Blender version requirement to 4.4.0
+
 ## Modifier List 1.7.92 - 14.1.2024
 
 New features:
