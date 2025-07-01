@@ -2,9 +2,7 @@ import bpy
 from mathutils import Matrix, Vector
 from mathutils.geometry import distance_point_to_plane
 
-from typing import Union
 from .modifier_categories import ALL_MODIFIERS_NAMES_ICONS_TYPES, HAVE_GIZMO_PROPERTY
-from .. import __package__ as base_package
 
 
 # Generic utils
@@ -24,14 +22,6 @@ def sync_bpy_object_props(source, dest):
 
 # ======================================================================
 
-def active_is_edit_mesh_modifier(mod):
-    is_edit_mesh_modifies = False
-    if mod.type == 'NODES':
-        if mod.node_group:
-            if "Edit Mesh" in mod.node_group.name:
-                is_edit_mesh_modifies = True
-    return is_edit_mesh_modifies
-
 def object_type_has_modifiers(object):
     obs_with_mods = {
         'MESH',
@@ -47,7 +37,7 @@ def object_type_has_modifiers(object):
 
 
 def get_favourite_modifiers():
-    prefs = bpy.context.preferences.addons[base_package].preferences
+    prefs = bpy.context.preferences.addons["modifier_list"].preferences
     return {attr: getattr(prefs, attr) for attr in prefs.__annotations__
             if attr.startswith("modifier_") and attr[-1].isdigit()}
 
@@ -60,32 +50,18 @@ def favourite_modifiers_names_icons_types():
     favorite_mods = get_favourite_modifiers().values()
     return (all_mods_dict[mod] if mod else (None, None, None) for mod in favorite_mods)
 
-def get_ml_active_object() -> Union[bpy.types.Object, None]:
+
+def get_ml_active_object():
     """Get the active object or if some object is pinned, get that"""
     context = bpy.context
     ob = context.object
-    if ob is None:
-        return None
-
-    #get if the obj is a Duplicate Linked Modifiers obj
-    if ob:
-        if ob.modifiers:
-            mod = ob.modifiers[0]
-            if len(ob.modifiers) == 1:
-                if mod.name == "Duplicate Linked Modifiers":
-                    for item in mod.node_group.interface.items_tree:
-                        if item.in_out == "INPUT" and item.identifier == 'Socket_2': 
-                            if mod[item.identifier]:
-                                object_name = mod[item.identifier].name
-                                ob = bpy.data.objects[object_name]
-
     ml_pinned_ob = context.scene.modifier_list.pinned_object
     area = context.area
 
     if ml_pinned_ob and area.type != 'PROPERTIES':
         if not (ml_pinned_ob.users == 1 and ml_pinned_ob.use_fake_user):
             return ml_pinned_ob
-        
+
     return ob
 
 
@@ -235,7 +211,7 @@ def _get_selected_points_from_curve(curve):
             for p in spline.points:
                 if p.select:
                     sel_points.append(p)
-                    # print(p.co)
+                    print(p.co)
 
     return sel_points
 
@@ -304,7 +280,7 @@ def _match_gizmo_size_to_object(gizmo_object, object):
     gizmo_object.empty_display_size = max_dim_with_offset
 
 
-def _create_gizmo_object(self, context, modifier, placement='OBJECT', ob=None):
+def _create_gizmo_object(self, context, modifier, placement='OBJECT'):
     """Create a gizmo (empty) object.
 
     placement: enum in {'CURSOR', 'OBJECT', 'WORLD_ORIGIN'}
@@ -315,9 +291,8 @@ def _create_gizmo_object(self, context, modifier, placement='OBJECT', ob=None):
     ml_col = _get_ml_collection(context)
     ml_col.objects.link(gizmo_ob)
 
-    prefs = bpy.context.preferences.addons[base_package].preferences
-    if ob is None:
-        ob = get_ml_active_object()
+    prefs = bpy.context.preferences.addons["modifier_list"].preferences
+    ob = get_ml_active_object()
 
     # Only use update_from_editmode if necessary
     if placement == 'OBJECT' or prefs.match_gizmo_size_to_object:
@@ -445,13 +420,6 @@ def _fit_lattice_to_object(object, lattice_object):
 
     _set_lattice_points(lattice_object, dims)
 
-def is_edit_mesh_modifier(mod):
-    is_edit_mesh_modifies = False
-    if mod.type == 'NODES':
-        if mod.node_group:
-            if "Edit Mesh" in mod.node_group.name:
-                is_edit_mesh_modifies = True
-    return is_edit_mesh_modifies
 
 def _position_lattice_gizmo_object(gizmo_object):
     """Position a lattice gizmo object"""
@@ -511,15 +479,14 @@ def _create_lattice_gizmo_object(self, context, modifier):
 
 # ==========
 
-def assign_gizmo_object_to_modifier(self, context, modifier, placement='OBJECT', ob=None):
+def assign_gizmo_object_to_modifier(self, context, modifier, placement='OBJECT'):
     """Assign a gizmo object to the correct property of the given modifier.
 
     placement: enum in {'CURSOR', 'OBJECT', 'WORLD_ORIGIN'}
     """
-    if not ob:
-        ob = get_ml_active_object()
+    ob = get_ml_active_object()
     mod = ob.modifiers[modifier]
-    prefs = bpy.context.preferences.addons[base_package].preferences
+    prefs = bpy.context.preferences.addons["modifier_list"].preferences
     parent_gizmo = prefs.parent_new_gizmo_to_object
 
     # If modifier is UV Project, handle it differently here
@@ -529,7 +496,7 @@ def assign_gizmo_object_to_modifier(self, context, modifier, placement='OBJECT',
 
         for p in projectors[0:projector_count]:
             if not p.object:
-                gizmo_ob = _create_gizmo_object(self, context, modifier, placement, ob)
+                gizmo_ob = _create_gizmo_object(self, context, modifier, placement)
                 p.object = gizmo_ob
                 if parent_gizmo:
                     gizmo_ob.parent = ob
@@ -542,7 +509,7 @@ def assign_gizmo_object_to_modifier(self, context, modifier, placement='OBJECT',
     if mod.type == 'LATTICE':
         gizmo_ob = _create_lattice_gizmo_object(self, context, modifier)
     else:
-        gizmo_ob = _create_gizmo_object(self, context, modifier, placement, ob)
+        gizmo_ob = _create_gizmo_object(self, context, modifier, placement)
 
     if mod.type == 'ARRAY':
         mod.use_constant_offset = False
@@ -611,33 +578,3 @@ def delete_ml_vertex_group(object, vertex_group_name):
             if vertex_group_name in vert_groups:
                 vert_group = vert_groups[vertex_group_name]
                 vert_groups.remove(vert_group)
-
-def force_show_object(ob, select=True):
-    obj_collection = ob.users_collection[0]
-
-    if obj_collection.hide_viewport == True or bpy.context.view_layer.layer_collection.children[obj_collection.name].hide_viewport == True:
-        obj_collection.hide_viewport = False
-        bpy.context.view_layer.layer_collection.children[obj_collection.name].hide_viewport = False
-        for obj in obj_collection.objects:
-            obj.hide_set(True)
-    ob.hide_set(False)
-    ob.hide_viewport = False
-
-    if select:
-        ob.select_set(True)
-
-    # handle if the object is not in isulate mode
-    def get_local_view(self):    
-        areas = bpy.context.workspace.screens[0].areas               
-        for area in areas:
-            for space in area.spaces:    
-                if space.type == 'VIEW_3D':
-                    r=not space.local_view  
-                    return not r
-    is_isolate_mode = get_local_view(bpy.context)   
-
-    if is_isolate_mode:
-        for area in bpy.context.screen.areas:
-            for space in area.spaces:
-                if space.type == 'VIEW_3D':
-                    (ob.local_view_set(space, True))

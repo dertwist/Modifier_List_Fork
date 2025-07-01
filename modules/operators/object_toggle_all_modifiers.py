@@ -7,7 +7,6 @@ https://wiki.blender.org/wiki/Extensions:2.6/Py/Scripts/3D_interaction/modifier_
 import bpy
 from bpy.props import *
 from bpy.types import Operator
-from ... import __package__ as base_package
 
 from ..utils import get_ml_active_object
 
@@ -70,7 +69,7 @@ Hold Shift to toggle modifiers based on current viewport on state.
                     if not mod.type == 'COLLISION':
                         mod.show_viewport = show_mods
 
-            prefs = bpy.context.preferences.addons[base_package].preferences
+            prefs = bpy.context.preferences.addons["modifier_list"].preferences
 
             if 'TOGGLE_VISIBILITY' in prefs.batch_ops_reports:
                 skipped_linked_obs_message = (" (skipped linked objects with no override)"

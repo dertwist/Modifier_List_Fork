@@ -9,7 +9,6 @@ import numpy as np
 import bpy
 from bpy.props import *
 from bpy.types import Operator
-from ... import __package__ as base_package
 
 from ..multiuser_data_modifier_apply_utils import LinkedObjectDataChanger
 from ..utils import get_ml_active_object
@@ -23,7 +22,7 @@ class VIEW3D_OT_ml_apply_all_modifiers_multi_user_data_dialog(Operator):
     bl_label = "Apply All Modifiers Dialog"
     bl_options = {'INTERNAL'}
 
-    op_name: StringProperty(options={'HIDDEN', 'SKIP_SAVE'}) # type: ignore
+    op_name: StringProperty(options={'HIDDEN', 'SKIP_SAVE'})
 
     def execute(self, context):
         return {'FINISHED'}
@@ -80,16 +79,15 @@ class VIEW3D_OT_ml_apply_all_modifiers(Operator):
     multi_user_data_apply_method: EnumProperty(
         items=multi_user_data_apply_method_items,
         default='NONE',
-        options={'HIDDEN', 'SKIP_SAVE'}) # type: ignore
+        options={'HIDDEN', 'SKIP_SAVE'})
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
         self.objects_have_local_data = False
         self.objects_have_modifiers = False
         self.objects_have_local_modifiers = False
         self.skipped_objects_with_non_local_data = False
         self.skipped_linked_modifiers = False
-        self.objects_with_modifiers_failed_to_apply = []
+        self.ojects_with_modifiers_failed_to_apply = []
 
     @classmethod
     def poll(cls, context):
@@ -126,10 +124,10 @@ class VIEW3D_OT_ml_apply_all_modifiers(Operator):
         if self.multi_user_data_apply_method == 'APPLY_TO_ALL':
             self.linked_object_data_changer.assign_new_data_to_other_instances()
 
-        prefs = bpy.context.preferences.addons[base_package].preferences
+        prefs = bpy.context.preferences.addons["modifier_list"].preferences
 
         # Info messages for when some modifiers were applied
-        if self.objects_with_modifiers_failed_to_apply:
+        if self.ojects_with_modifiers_failed_to_apply:
             self.some_modifiers_could_not_be_applied_report()
         elif 'APPLY' in prefs.batch_ops_reports:
             self.apply_report()
@@ -140,7 +138,7 @@ class VIEW3D_OT_ml_apply_all_modifiers(Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        prefs = bpy.context.preferences.addons[base_package].preferences
+        prefs = bpy.context.preferences.addons["modifier_list"].preferences
         global disallow_applying_hidden_modifiers
         disallow_applying_hidden_modifiers = (
             not prefs.disallow_applying_hidden_modifiers if event.alt
@@ -221,8 +219,8 @@ class VIEW3D_OT_ml_apply_all_modifiers(Operator):
         return True
 
     def some_modifiers_could_not_be_applied_report(self):
-        failed_obs = ", ".join(self.objects_with_modifiers_failed_to_apply)
-        if len(self.objects_with_modifiers_failed_to_apply) < 8:
+        failed_obs = ", ".join(self.ojects_with_modifiers_failed_to_apply)
+        if len(self.ojects_with_modifiers_failed_to_apply) < 8:
             self.report({'INFO'}, f"Some modifier(s) couldn't be applied on {failed_obs}")
         else:
             self.report({'INFO'}, "Some modifier(s) couldn't be applied. Check the system "

@@ -1,7 +1,6 @@
 from bpy.types import Operator
 
 from ..utils import get_favourite_modifiers
-from ... import __package__ as base_package
 
 
 class WM_OT_ml_sort_favourite_modifiers(Operator):
@@ -11,7 +10,7 @@ class WM_OT_ml_sort_favourite_modifiers(Operator):
     bl_options = {'INTERNAL'}
 
     def execute(self, context):
-        prefs = context.preferences.addons[base_package].preferences
+        prefs = context.preferences.addons["modifier_list"].preferences
         favourites_dict = get_favourite_modifiers()
         fav_mod_attr_names = list(favourites_dict.keys())
         mods = list(filter(None, favourites_dict.values()))

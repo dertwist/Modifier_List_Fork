@@ -13,7 +13,7 @@ from .modifier_categories import ALL_MODIFIERS_NAMES_ICONS_TYPES
 from .ui.properties_editor import register_DATA_PT_modifiers, reregister_DATA_PT_modifiers
 from .ui.ui_common import box_with_header, favourite_modifiers_configuration_layout
 from .ui.sidebar import update_sidebar_category
-from .. import __package__ as base_package
+
 
 # Property reading
 # ======================================================================
@@ -35,9 +35,6 @@ def fill_prefs(prefs_dict, prefs):
 
         prop_in_prefs = getattr(prefs, prop)
 
-        if prop == "flip_axis" and prefs_dict[prop] == []: # fixes error if old prefs are used in 4.4
-            continue
-        
         if isinstance(prop_in_prefs, PropertyGroup):
             fill_prefs(prefs_dict[prop], prop_in_prefs)
         else:
@@ -55,7 +52,7 @@ def read_prefs(prefs_file):
         except json.decoder.JSONDecodeError:
             return
 
-    prefs = bpy.context.preferences.addons[base_package].preferences
+    prefs = bpy.context.preferences.addons["modifier_list"].preferences
     fill_prefs(prefs_dict, prefs)
 
 
@@ -77,7 +74,7 @@ def ensure_valid_write_value(value):
 
 
 def create_prefs_dict():
-    prefs = bpy.context.preferences.addons[base_package].preferences
+    prefs = bpy.context.preferences.addons["modifier_list"].preferences
     prefs_dict = {}
     fill_prefs_dict(prefs, prefs_dict)
     return prefs_dict
@@ -97,7 +94,7 @@ def write_prefs():
     """Write preferences into a json"""
     prefs_dict = create_prefs_dict()
     config_dir = bpy.utils.user_resource('CONFIG')
-    ml_config_dir = os.path.join(config_dir, base_package)
+    ml_config_dir = os.path.join(config_dir, "modifier_list")
 
     if not os.path.exists(ml_config_dir):
         os.mkdir(ml_config_dir)
@@ -230,7 +227,7 @@ ACTUAL_MODIFIER_DEFAULTS_PER_MODIFIER = {
                 0.0, 0.0, 0.0, 0.0
             )
     },
-    "MESH_CACHE": {"flip_axis": set() if bpy.app.version < (4, 4, 0) else (False, False, False)},
+    "MESH_CACHE": {"flip_axis": set()},
     "MESH_SEQUENCE_CACHE": {"read_data": {'VERT', 'UV', 'POLY', 'COLOR'}},
     "MESH_TO_VOLUME": {
         "density": 1.0,
@@ -293,6 +290,10 @@ SETTINGS_TO_IGNORE_PER_MODIFIER = {
         # even shown in the modifier's UI.
         "matrix_inverse"
     },
+    "MESH_CACHE": {
+        # flip_axis property causes registration errors in Blender 4.4
+        "flip_axis"
+    },
     "MULTIRES": {
         # levels, sculpt_levels or render_levels can't be set directly,
         # which wouldn't make sense anyway.
@@ -332,8 +333,7 @@ def add_modifier_defaults_group_props(identifier, cls, property_group):
         "use_apply_on_spline",
         "show_expanded",
         "is_active",
-        "debug_options",
-        "use_pin_to_last"
+        "debug_options"
     }
     all_mod_attrs = cls.bl_rna.properties.values()
     mod_settings = [attr for attr in all_mod_attrs
@@ -415,14 +415,19 @@ def add_modifier_defaults_group_props(identifier, cls, property_group):
 
         kwargs["update"] = prefs_callback
 
-        property_group.__annotations__[setting.identifier] = prop(**kwargs)
+        try:
+            property_group.__annotations__[setting.identifier] = prop(**kwargs)
+        except Exception as e:
+            print(f"Warning: Could not register property '{setting.identifier}' for modifier '{identifier}': {e}")
+            # Skip this property if it fails to register
+            continue
 
 
 # Preferences
 # ======================================================================
 
 class Preferences(AddonPreferences):
-    bl_idname = base_package
+    bl_idname = "modifier_list"
 
     # === General settings ===
     use_sidebar: BoolProperty(
@@ -449,23 +454,10 @@ class Preferences(AddonPreferences):
         update=properties_editor_style_callback)
     
     show_search_and_menu_bar: BoolProperty(
-        name="Search & Add Menu",
+        name="Show Search And Menu Bar",
         description="Show the search and menu bar in the Properties Editor",
         default=True,
         update=use_properties_editor_callback)
-    
-    show_apply_copy_pin_bar: BoolProperty(
-        name="Operations Bar",
-        description="Show the apply, copy and pin bar in the Properties Editor",
-        default=True,
-        update=use_properties_editor_callback)
-    
-    classic_display_order: BoolProperty(
-        name="Classic Visibility Buttons Order",
-        description="Display show modifiers visibilty buttons in the classic order",
-        default=False,
-        update=prefs_callback)
-    
 
     sidebar_style: EnumProperty(
         items=style_items,
@@ -537,12 +529,6 @@ class Preferences(AddonPreferences):
         description="Disallow applying modifier's which are hidden in the viewport. \n"
                     "Hold Alt to override this. (When off, the behaviour is reversed)",
         update=prefs_callback)
-    
-    alwayse_show_use_pin_to_last: BoolProperty(
-        name="Always Show Use Pin To Last",
-        description="Always show the use pin to last option icons",
-        default=False,
-        update=prefs_callback)
 
     icon_color_items = [
         ("black", "Black", "", 1),
@@ -560,21 +546,21 @@ class Preferences(AddonPreferences):
         description="Reverse the order of the list persistently (requires restart)",
         update=prefs_callback)
 
-    show_general_settings_region: BoolProperty(
-        name="Modifier Options Bar",
+    hide_general_settings_region: BoolProperty(
+        name="Hide General Settings Region",
         description="Hide the region which shows modifier name and display settings. "
                     "The same settings are also inside the modifier list",
-        update=prefs_callback, default=True)
+        update=prefs_callback)
 
     show_confirmation_popups: BoolProperty(
-        name="Confirmation Popups",
+        name="Show Confirmation Popups",
         description="Show confirmation popups for Apply All Modifiers "
                     "and Remove All Modifiers operators",
         default=True,
         update=prefs_callback)
 
     show_batch_ops_in_main_layout_with_stack_style: BoolProperty(
-        name="Batch Operators In Main Layout With Stack Style",
+        name="Show Batch Operators In Main Layout With Stack Style",
         description="When using the stack layout, show the batch operators in the main layout in "
                     "their own row. Otherwise they are located in the Modifier Extras popover",
         default=True,
@@ -643,60 +629,50 @@ class Preferences(AddonPreferences):
         # === Info ===
         col = layout.column()
         col.label(icon='INFO',
-                  text="Preferences are Auto Saved in the Blender Config Folder")
+                  text="Preferences are auto saved into your Blender config folder, eg:")
+        col.label(text="      '...\\Blender Foundation\\Blender\\<blender version>"
+                       "\\config\\modifier_list\\preferences.json'")
+
+        layout.separator()
 
         # === Import ===
-        row = layout.row(align=True)
         filepath = os.path.dirname(bpy.utils.resource_path('USER')) + os.path.sep
-        row.operator("ml.open_preferences_folder", icon='FILE_FOLDER')
-        row.operator("wm.ml_preferences_import", icon='IMPORT').filepath = filepath
+        layout.operator("wm.ml_preferences_import", icon='IMPORT').filepath = filepath
 
         layout.separator()
 
         # === Enable/disable in Properties Editor and sidebar ===
-        row = layout.row()
-        row.label(text="Show in:")
-        row.prop(self, "use_properties_editor")
-        row.prop(self, "use_sidebar")
+        layout.prop(self, "use_properties_editor")
+        layout.prop(self, "use_sidebar")
 
+        layout.separator()
 
         # === UI style ===
-        row = layout.row()
-  
-        row.label(text="UI Style:")
-        row.row().prop(self, "properties_editor_style", expand=True)
+        layout.label(text="Style:")
 
+        split = layout.split()
+        split.label(text="Properties Editor")
+        split.row().prop(self, "properties_editor_style", expand=True)
         row = layout.row()
-        row = layout.row()
-        row = layout.row()
-        row.label(text="Show UI Elements:")
-        row = layout.row()
-        row.alignment = 'LEFT'
-
-        row.prop(self, "show_search_and_menu_bar")
-        if self.properties_editor_style == 'LIST':
-            row = layout.row()
-            row.prop(self, "show_apply_copy_pin_bar")
-        row.prop(self, "show_general_settings_region")
-
+        layout.prop(self, "show_search_and_menu_bar")
 
         # template_modifiers() doesn't currently work outside of
         # Properties Editor, so sidebar_style and popup_style are
         # disabled. https://developer.blender.org/T88655.
-        # layout.label(text="The next two settings are currently disabled because of a bug in "
-        #              "Blender (T88655)", icon='INFO')
+        layout.label(text="The next two settings are currently disabled because of a bug in "
+                     "Blender (T88655)", icon='INFO')
 
-        # split = layout.split()
-        # split.label(text="Sidebar")
-        # row = split.row()
-        # row.enabled = False
-        # row.prop(self, "sidebar_style", expand=True)
+        split = layout.split()
+        split.label(text="Sidebar")
+        row = split.row()
+        row.enabled = False
+        row.prop(self, "sidebar_style", expand=True)
 
-        # split = layout.split()
-        # split.label(text="Popup")
-        # row = split.row()
-        # row.enabled = False
-        # row.prop(self, "popup_style", expand=True)
+        split = layout.split()
+        split.label(text="Popup")
+        row = split.row()
+        row.enabled = False
+        row.prop(self, "popup_style", expand=True)
 
         # === Sidebar ===
         if self.use_sidebar:
@@ -737,12 +713,8 @@ class Preferences(AddonPreferences):
             split.label(text="Icon Color")
             split.row().prop(self, "icon_color", expand=True)
 
-            box.prop(self, "classic_display_order")
-            box.prop(self, "alwayse_show_use_pin_to_last")
             box.prop(self, "reverse_list")
-    
-            split = box.split()
-            split.label(text="Show")
+            box.prop(self, "hide_general_settings_region")
             box.prop(self, "show_confirmation_popups")
             box.prop(self, "show_batch_ops_in_main_layout_with_stack_style")
 
@@ -828,7 +800,7 @@ def register():
 
     # === Read preferences from a json ===
     config_dir = bpy.utils.user_resource('CONFIG')
-    prefs_file = os.path.join(config_dir, base_package, "preferences.json")
+    prefs_file = os.path.join(config_dir, "modifier_list", "preferences.json")
 
     global skip_writing_prefs
     skip_writing_prefs = True

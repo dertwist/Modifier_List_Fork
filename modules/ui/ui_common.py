@@ -2,7 +2,6 @@ import bpy
 
 from .. import modifier_categories
 from ..utils import get_favourite_modifiers
-from ... import __package__ as base_package
 
 
 def box_with_header(layout, text, expand_data, expand_prop):
@@ -24,7 +23,7 @@ def box_with_header(layout, text, expand_data, expand_prop):
 
 
 def favourite_modifiers_configuration_layout(context, layout):
-    prefs = context.preferences.addons[base_package].preferences
+    prefs = context.preferences.addons["modifier_list"].preferences
     ml_props = context.window_manager.modifier_list
     favourites_dict = get_favourite_modifiers()
     favourite_mod_attr_names = favourites_dict.keys()
@@ -44,11 +43,12 @@ def favourite_modifiers_configuration_layout(context, layout):
         row.alignment = 'LEFT'
 
         col = row.column(align=True)
-        col.label(text="Edit")
+        col.label(text="Modify")
         col.separator(factor=0.3)
-        for name, icon, _ in modifier_categories.ALL_EDIT_NAMES_ICONS_TYPES:
+        for name, icon, _ in modifier_categories.ALL_MODIFY_NAMES_ICONS_TYPES:
             col.operator("ui.ml_favourite_modifier_toggle", text=name, icon=icon,
                          depress=name in favourite_mods).modifier = name
+
         col = row.column(align=True)
         col.label(text="Generate")
         col.separator(factor=0.3)

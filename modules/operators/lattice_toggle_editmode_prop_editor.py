@@ -1,7 +1,9 @@
 import bpy
 from bpy.props import *
 from bpy.types import Operator
-from ..utils import get_gizmo_object_from_modifier, get_ml_active_object, force_show_object
+
+from ..utils import get_gizmo_object_from_modifier, get_ml_active_object
+
 
 area_index = None
 is_init_ob_pinned = False
@@ -130,11 +132,8 @@ class OBJECT_OT_ml_lattice_toggle_editmode_prop_editor(Operator):
             gizmo_ob = act_mod.object
 
             bpy.ops.object.mode_set(mode='OBJECT')
-            bpy.ops.object.select_all(action='DESELECT')
 
             context.view_layer.objects.active = gizmo_ob
-            if gizmo_ob:
-                force_show_object(gizmo_ob, select=True)
 
             bpy.ops.object.mode_set(mode='EDIT')
 
@@ -156,12 +155,10 @@ class OBJECT_OT_ml_lattice_toggle_editmode_prop_editor(Operator):
                 pass
 
             bpy.ops.object.mode_set(mode='OBJECT')
-            bpy.ops.object.select_all(action='DESELECT')
 
             init_act_ob = bpy.data.objects[init_act_ob_name]
 
             if is_init_ob_pinned:
-                init_act_ob.select_set(True)
                 context.view_layer.objects.active = init_act_ob
 
                 if init_mode == 'EDIT_MESH':
@@ -169,11 +166,10 @@ class OBJECT_OT_ml_lattice_toggle_editmode_prop_editor(Operator):
 
             else:
                 if init_mode == 'OBJECT':
-                    init_act_ob.select_set(True)
+                    ob.select_set(False)
                     context.view_layer.objects.active = init_act_ob
                 else:
                     context.view_layer.objects.active = init_act_ob
-                    init_act_ob.select_set(True)
                     bpy.ops.object.mode_set(mode='EDIT')
 
                 space_data.pin_id = None

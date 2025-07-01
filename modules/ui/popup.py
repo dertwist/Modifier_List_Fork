@@ -5,9 +5,7 @@ from bpy.types import Operator
 from .modifiers_ui import modifiers_ui_with_list, modifiers_ui_with_stack
 from .ui_common import pin_object_button
 from .vertex_groups_ui import vertex_groups_ui
-from .attributes_ui import attributes_ui
 from ..utils import get_ml_active_object, object_type_has_modifiers
-from ... import __package__ as base_package
 
 
 class VIEW3D_OT_ml_modifier_popup(Operator):
@@ -19,7 +17,7 @@ class VIEW3D_OT_ml_modifier_popup(Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        prefs = bpy.context.preferences.addons[base_package].preferences
+        prefs = bpy.context.preferences.addons["modifier_list"].preferences
 
         self.panel_width = prefs.popup_width
         TABS_WIDTH = 26
@@ -48,7 +46,7 @@ class VIEW3D_OT_ml_modifier_popup(Operator):
         ml_props = bpy.context.window_manager.modifier_list
         popup_tab = ml_props.popup_active_tab
 
-        prefs = bpy.context.preferences.addons[base_package].preferences
+        prefs = bpy.context.preferences.addons["modifier_list"].preferences
 
         # Don't add a label when props_dialog is used, avoiding
         # wasting space.
@@ -65,13 +63,11 @@ class VIEW3D_OT_ml_modifier_popup(Operator):
         if popup_tab == 'MODIFIERS':
             if prefs.popup_style == 'LIST':
                 num_of_rows = prefs.mod_list_def_len
-                modifiers_ui_with_list(context, col, num_of_rows=num_of_rows, use_in_popup=True, new_menu=True)
+                modifiers_ui_with_list(context, col, num_of_rows=num_of_rows, use_in_popup=True)
             else:
                 modifiers_ui_with_stack(context, col, use_in_popup=True)
         elif popup_tab == 'OBJECT_DATA':
             vertex_groups_ui(context, col, num_of_rows=7)
-        elif popup_tab == 'ATTRIBUTES':
-            attributes_ui(context, col, num_of_rows=7)
 
         # === Tabs ===
         col = split.column(align=True)

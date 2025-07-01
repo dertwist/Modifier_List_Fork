@@ -279,7 +279,6 @@ class ML_WindowManagerProperties(PropertyGroup):
     popup_tabs_items = [
         ("MODIFIERS", "Modifiers", "Modifiers", 'MODIFIER', 1),
         ("OBJECT_DATA", "Object Data", "Object Data", 'MESH_DATA', 2),
-        ("ATTRIBUTES", "Attributes", "Attributes", 'OUTLINER_DATA_FONT', 3),
     ]
     popup_active_tab: EnumProperty(
         items=popup_tabs_items,

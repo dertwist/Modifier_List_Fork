@@ -3,7 +3,6 @@ import numpy as np
 import bpy
 from bpy.props import *
 from bpy.types import Operator
-from ... import __package__ as base_package
 
 from . import lattice_toggle_editmode, lattice_toggle_editmode_prop_editor
 from ..utils import (
@@ -23,8 +22,6 @@ class OBJECT_OT_ml_modifier_remove(Operator):
                      "Hold shift to also delete its gizmo object (if it has one)")
     bl_options = {'REGISTER', 'INTERNAL', 'UNDO'}
 
-    delete_gizmo: BoolProperty(default=False, options={'HIDDEN', 'SKIP_SAVE'})
-
     @classmethod
     def poll(cls, ontext):
         ob = get_ml_active_object()
@@ -39,7 +36,7 @@ class OBJECT_OT_ml_modifier_remove(Operator):
         return is_modifier_local(ob, mod)
 
     def execute(self, context):
-        prefs = bpy.context.preferences.addons[base_package].preferences
+        prefs = bpy.context.preferences.addons["modifier_list"].preferences
 
         ml_active_ob = get_ml_active_object()
 
@@ -53,18 +50,18 @@ class OBJECT_OT_ml_modifier_remove(Operator):
         active_mod_index = ml_active_ob.ml_modifier_active_index
         active_mod = ml_active_ob.modifiers[active_mod_index]
 
-        if self.delete_gizmo or prefs.always_delete_gizmo:
+        if self.shift or prefs.always_delete_gizmo:
             self.remove_gizmo_and_vertex_group(context, ml_active_ob, active_mod)
 
         ### Draise - added "with" for Blender 4.0.0 compatibility
         with context.temp_override(id=ml_active_ob):
-            bpy.ops.object.modifier_remove('INVOKE_DEFAULT', modifier=active_mod.name)
+            bpy.ops.object.modifier_remove(modifier=active_mod.name)
         ml_active_ob.ml_modifier_active_index = np.clip(active_mod_index - 1, 0, 999)
 
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        self.delete_gizmo = self.delete_gizmo or event.shift
+        self.shift = event.shift
 
         return self.execute(context)
 

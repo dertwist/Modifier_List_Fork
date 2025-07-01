@@ -6,17 +6,14 @@ BLENDER_VERSION_MAJOR_POINT_MINOR = float(bpy.app.version_string[0:4].strip(".")
 _mods_enum = bpy.types.Modifier.bl_rna.properties['type'].enum_items
 # There's' a modifier called "Surface" which needs to be filtered out
 # because it's not meant to be seen by users.
-auto_smooth = ('Auto Smooth', 'MOD_EDGESPLIT', 'AUTO_SMOOTH')
-edit_mesh = ('Edit Mesh', 'EDITMODE_HLT', 'EDIT_MESH')
-_mods =[(mod.name, mod.icon, mod.identifier) for mod in _mods_enum
-                                   if mod.name != "Surface" and "GREASE_PENCIL" not in mod.identifier]
-_mods.insert(next(_mods.index(mod) for mod in _mods if mod[0] == "Array"), auto_smooth)
-_mods.insert(next(_mods.index(mod) for mod in _mods if mod[0] == "Array"), edit_mesh)
+ALL_MODIFIERS_NAMES_ICONS_TYPES = [(mod.name, mod.icon, mod.identifier) for mod in _mods_enum
+                                   if mod.name != "Surface"]
 
-ALL_MODIFIERS_NAMES_ICONS_TYPES = _mods
 
 # === All modifier by categories ===
-_edit_end = next(_mods.index(mod) + 1 for mod in _mods if mod[0] == "Edit Mesh")
+_mods = ALL_MODIFIERS_NAMES_ICONS_TYPES
+
+_modify_end = next(_mods.index(mod) + 1 for mod in _mods if mod[0] == "Vertex Weight Proximity")
 _gen_start = next(_mods.index(mod) for mod in _mods if mod[0] == "Array")
 _gen_end = next(_mods.index(mod) + 1 for mod in _mods if mod[0] == "Wireframe")
 _def_start = next(_mods.index(mod) for mod in _mods if mod[0] == "Armature")
@@ -24,7 +21,7 @@ _def_end = next(_mods.index(mod) + 1 for mod in _mods if mod[0] == "Wave")
 _sim_start = next(_mods.index(mod) for mod in _mods if mod[0] == "Cloth")
 _sim_end = next(_mods.index(mod) + 1 for mod in _mods if mod[0] == "Soft Body")
 
-ALL_EDIT_NAMES_ICONS_TYPES = [mod for mod in _mods[0:_edit_end]]
+ALL_MODIFY_NAMES_ICONS_TYPES = [mod for mod in _mods[0:_modify_end]]
 ALL_GENERATE_NAMES_ICONS_TYPES = [mod for mod in _mods[_gen_start:_gen_end]]
 ALL_DEFORM_NAMES_ICONS_TYPES = [mod for mod in _mods[_def_start:_def_end]]
 ALL_SIMULATE_NAMES_ICONS_TYPES = [mod for mod in _mods[_sim_start:_sim_end]]
@@ -32,7 +29,7 @@ ALL_SIMULATE_NAMES_ICONS_TYPES = [mod for mod in _mods[_sim_start:_sim_end]]
 # === Mesh modifiers by categories ===
 # Modifiers that don't apply to meshes need to be filtered out
 
-MESH_EDIT_NAMES_ICONS_TYPES = ALL_EDIT_NAMES_ICONS_TYPES
+MESH_MODIFY_NAMES_ICONS_TYPES = ALL_MODIFY_NAMES_ICONS_TYPES
 MESH_GENERATE_NAMES_ICONS_TYPES = [mod for mod in ALL_GENERATE_NAMES_ICONS_TYPES
                                    if mod[0] != "Mesh to Volume"]
 MESH_DEFORM_NAMES_ICONS_TYPES = [mod for mod in ALL_DEFORM_NAMES_ICONS_TYPES
@@ -40,17 +37,16 @@ MESH_DEFORM_NAMES_ICONS_TYPES = [mod for mod in ALL_DEFORM_NAMES_ICONS_TYPES
 MESH_SIMULATE_NAMES_ICONS_TYPES = ALL_SIMULATE_NAMES_ICONS_TYPES
 
 MESH_ALL_NAMES_ICONS_TYPES = (
-    MESH_EDIT_NAMES_ICONS_TYPES
+    MESH_MODIFY_NAMES_ICONS_TYPES
     + MESH_GENERATE_NAMES_ICONS_TYPES
     + MESH_DEFORM_NAMES_ICONS_TYPES
     + MESH_SIMULATE_NAMES_ICONS_TYPES
 )
 
 # === Curve, surface and text modifiers by categories ===
-CURVE_SURFACE_TEXT_EDIT_NAMES_ICONS_TYPES = [
+CURVE_SURFACE_TEXT_MODIFY_NAMES_ICONS_TYPES = [
     ('Mesh Cache', 'MOD_MESHDEFORM', 'MESH_CACHE'),
-    ('Mesh Sequence Cache', 'MOD_MESHDEFORM', 'MESH_SEQUENCE_CACHE'),
-    ('Auto Smooth', 'MOD_EDGESPLIT', 'AUTO_SMOOTH'),
+    ('Mesh Sequence Cache', 'MOD_MESHDEFORM', 'MESH_SEQUENCE_CACHE')
 ]
 
 CURVE_TEXT_GENERATE_NAMES_ICONS_TYPES = [
@@ -107,14 +103,14 @@ CURVE_SURFACE_TEXT_SIMULATE_NAMES_ICONS_TYPES = [
 ]
 
 CURVE_TEXT_ALL_NAMES_ICONS_TYPES = (
-    CURVE_SURFACE_TEXT_EDIT_NAMES_ICONS_TYPES
+    CURVE_SURFACE_TEXT_MODIFY_NAMES_ICONS_TYPES
     + CURVE_TEXT_GENERATE_NAMES_ICONS_TYPES
     + CURVE_SURFACE_TEXT_DEFORM_NAMES_ICONS_TYPES
     + CURVE_SURFACE_TEXT_SIMULATE_NAMES_ICONS_TYPES
 )
 
 SURFACE_ALL_NAMES_ICONS_TYPES = (
-    CURVE_SURFACE_TEXT_EDIT_NAMES_ICONS_TYPES
+    CURVE_SURFACE_TEXT_MODIFY_NAMES_ICONS_TYPES
     + SURFACE_GENERATE_NAMES_ICONS_TYPES
     + CURVE_SURFACE_TEXT_DEFORM_NAMES_ICONS_TYPES
     + CURVE_SURFACE_TEXT_SIMULATE_NAMES_ICONS_TYPES
@@ -133,7 +129,7 @@ else:
 CURVES_ALL_NAMES_ICONS_TYPES = CURVES_GENERATE_NAMES_ICONS_TYPES
 
 # === Lattice modifiers by categories ===
-LATTICE_EDIT_NAMES_ICONS_TYPES = (
+LATTICE_MODIFY_NAMES_ICONS_TYPES = (
     ('Mesh Cache', 'MOD_MESHDEFORM', 'MESH_CACHE'),
 )
 
@@ -155,7 +151,7 @@ LATTICE_SIMULATE_NAMES_ICONS_TYPES = (
 )
 
 LATTICE_ALL_NAMES_ICONS_TYPES = (
-    LATTICE_EDIT_NAMES_ICONS_TYPES
+    LATTICE_MODIFY_NAMES_ICONS_TYPES
     + LATTICE_DEFORM_NAMES_ICONS_TYPES
     + LATTICE_SIMULATE_NAMES_ICONS_TYPES
 )

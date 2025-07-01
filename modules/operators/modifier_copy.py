@@ -36,6 +36,6 @@ class OBJECT_OT_ml_modifier_copy(Operator):
         #override['object'] = ob
 
         with context.temp_override(id=ob): ### Draise - added "with" for Blender 4.0.0 compatibility
-            bpy.ops.object.modifier_copy('INVOKE_DEFAULT', modifier=mod.name)
+            bpy.ops.object.modifier_copy(modifier=mod.name)
 
         return {'FINISHED'}

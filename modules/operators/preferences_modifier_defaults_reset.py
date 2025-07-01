@@ -1,5 +1,4 @@
 from bpy.types import Operator
-from ... import __package__ as base_package
 
 
 class WM_OT_ml_modifier_defaults_reset(Operator):
@@ -19,7 +18,7 @@ class WM_OT_ml_modifier_defaults_reset(Operator):
         ml_props = context.window_manager.modifier_list
         mod_name = ml_props.preferences_ui_props.modifier_to_show_defaults_for
         mod_type = ml_props.all_modifiers[mod_name].value
-        all_defaults = context.preferences.addons[base_package].preferences.modifier_defaults
+        all_defaults = context.preferences.addons["modifier_list"].preferences.modifier_defaults
         mod_defaults_group = getattr(all_defaults, mod_type)
 
         for setting, _ in list(mod_defaults_group.items()):

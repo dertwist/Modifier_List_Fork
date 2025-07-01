@@ -1,7 +1,6 @@
 import bpy
 from bpy.props import *
 from bpy.types import Operator
-from ... import __package__ as base_package
 
 
 from ..utils import get_favourite_modifiers
@@ -13,7 +12,7 @@ class FavouriteModifierMoveBase:
         active_index = ml_props.active_favourite_modifier_slot_index
         new_index = active_index - 1 if self.direction == 'UP' else active_index + 1
 
-        prefs = context.preferences.addons[base_package].preferences
+        prefs = context.preferences.addons["modifier_list"].preferences
         favourites_dict = get_favourite_modifiers()
         fav_mod_attr_names = list(favourites_dict.keys())
         fav_mods = list(favourites_dict.values())

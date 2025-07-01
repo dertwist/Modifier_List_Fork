@@ -7,7 +7,6 @@ https://wiki.blender.org/wiki/Extensions:2.6/Py/Scripts/3D_interaction/modifier_
 import bpy
 from bpy.props import *
 from bpy.types import Operator
-from ... import __package__ as base_package
 
 from ..utils import get_ml_active_object, is_modifier_local
 
@@ -67,7 +66,7 @@ class VIEW3D_OT_ml_remove_all_modifiers(Operator):
                 self.report({'INFO'}, "No modifiers to remove")
             return {'CANCELLED'}
 
-        prefs = bpy.context.preferences.addons[base_package].preferences
+        prefs = bpy.context.preferences.addons["modifier_list"].preferences
 
         if 'REMOVE' in prefs.batch_ops_reports:
             message = ("Removed all local modifiers" if skipped_non_local_modifiers
@@ -77,7 +76,7 @@ class VIEW3D_OT_ml_remove_all_modifiers(Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        prefs = bpy.context.preferences.addons[base_package].preferences
+        prefs = bpy.context.preferences.addons["modifier_list"].preferences
 
         if prefs.show_confirmation_popups:
             return context.window_manager.invoke_confirm(self, event)

@@ -3,7 +3,6 @@ import numpy as np
 import bpy
 from bpy.props import *
 from bpy.types import Menu, Panel, UIList
-from ... import __package__ as base_package
 
 # Check if the modifier layouts can be imported from Blender. If not,
 # import the layouts included in this addon. This is needed for 2.90 and
@@ -24,14 +23,11 @@ from ..utils import (
     get_gizmo_object_from_modifier,
     get_ml_active_object,
     is_modifier_disabled,
-    is_modifier_local,
-    is_edit_mesh_modifier
+    is_modifier_local
 )
 
 
 BLENDER_VERSION_MAJOR_POINT_MINOR = float(bpy.app.version_string[0:4].strip("."))
-
-list_of_frozen_modifiers = []
 
 
 # UI elements
@@ -42,7 +38,7 @@ def _favourite_modifier_buttons(layout):
 
     Empty rows in preferences are skipped."""
 
-    prefs = bpy.context.preferences.addons[base_package].preferences
+    prefs = bpy.context.preferences.addons["modifier_list"].preferences
     fav_names_icons_types_iter = favourite_modifiers_names_icons_types()
 
     place_three_per_row = prefs.favourites_per_row == '3'
@@ -77,7 +73,7 @@ def _favourite_modifier_buttons(layout):
                     row.label(text="")
 
 
-def _modifier_search_and_menu(layout, object, new_menu=False):
+def _modifier_search_and_menu(layout, object):
     """Creates the modifier search and menu row.
 
     Returns a sub row which contains the menu so that the modifier
@@ -86,10 +82,7 @@ def _modifier_search_and_menu(layout, object, new_menu=False):
     ob = object
     ml_props = bpy.context.window_manager.modifier_list
 
-    if new_menu:
-        row = layout.split(factor=0.5, align=True)
-    else:
-        row = layout.split(factor=0.59)
+    row = layout.split(factor=0.59)
     row.enabled = ob.library is None or ob.override_library is not None
 
     if ob.type == 'MESH':
@@ -114,12 +107,9 @@ def _modifier_search_and_menu(layout, object, new_menu=False):
         row.prop_search(ml_props, "modifier_to_add_from_search", ml_props, "volume_modifiers",
                         text="", icon='MODIFIER')
 
-    if new_menu:
-        sub = row.row(align=True)
-    else:
-        sub = row.row(align=False)
+    sub = row.row()
     sub.menu("OBJECT_MT_ml_add_modifier_menu")
-    sub.operator("wm.call_menu", text="", icon='ADD').name = "OBJECT_MT_modifier_add"
+
     return sub
 
 
@@ -227,30 +217,6 @@ def _show_on_cage_button(object, modifier, layout, pcoll, use_in_list):
     return True
 
 
-def _pin_to_last_buttons(object, modifier, layout, pcoll, use_in_list):
-    mods = object.modifiers
-    has_pin_to_last = False
-    prefs = bpy.context.preferences.addons[base_package].preferences
-    
-    if not prefs.alwayse_show_use_pin_to_last:
-        for mod in mods:
-            if mod.use_pin_to_last:
-                has_pin_to_last = True
-                break
-    else: 
-        has_pin_to_last = True
-
-    if not has_pin_to_last:
-        return
-    # Button
-    row = layout.row(align=True)
-    icon_pinned = "PINNED"
-    icon_unpinned = "UNPINNED"
-
-    icon = icon_pinned if modifier.use_pin_to_last else icon_unpinned
-    row.prop(modifier, "use_pin_to_last", text="", icon=icon, emboss=not use_in_list)
-
-
 def _curve_properties_context_change_button(layout, pcoll, use_in_list):
     sub = layout.row(align=True)
     empy_icon = pcoll['EMPTY_SPACE']
@@ -299,79 +265,6 @@ def _mesh_properties_context_change_button(modifier, layout, use_in_list):
     return False
 
 
-def _classic_modifier_visibility_buttons(modifier, layout, pcoll, use_in_list=False):
-    """Classic flipped order of properties. This handles the modifier visibility buttons
-    (and also the properties_context_change button) to match the behaviour of the regular UI .
-
-    When called, adds those buttons, for the given modifier, in their
-    correct state, to the specified (sub-)layout.
-
-    Note: some modifiers show show_on_cage in the regular UI only if,
-    for example, an object to use for deforming is specified. Eg.
-    Armatature modifier requires an armature object to be specified in
-    order to show the button. This function doesn't take that into
-    account but instead shows the button always in those cases. It's
-    easier to achieve and hardly makes a difference.
-    """
-    empy_icon = pcoll['EMPTY_SPACE']
-
-    # Main layout
-    row = layout.row(align=True)
-    row.scale_x = 1.0 if use_in_list else 1.2
-
-    # show_render and show_viewport
-    sub = row.row(align=True)
-
-    is_edit_mesh_modifies = is_edit_mesh_modifier(modifier)
-
-    if is_edit_mesh_modifies:
-        sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
-    
-    if not modifier in list_of_frozen_modifiers and not is_edit_mesh_modifies:
-        # Hide visibility toggles for collision modifier as they are not
-        # used in the regular UI either (apparently can cause problems
-        # in some scenes).
-        if modifier.type == 'COLLISION':
-            sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
-            sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
-        else:
-            sub.prop(modifier, "show_render", text="", emboss=not use_in_list)
-            sub.prop(modifier, "show_viewport", text="", emboss=not use_in_list)
-        
-        # show_in_editmode
-        _show_in_editmode_button(modifier, row, pcoll, use_in_list)
-
-        ob = get_ml_active_object()
-
-        # No use_apply_on_spline or show_on_cage for lattices
-        if ob.type == 'LATTICE':
-            return
-
-        # use_apply_on_spline or properties_context_change
-        if ob.type != 'MESH':
-            if modifier.type == 'SOFT_BODY':
-                _curve_properties_context_change_button(row, pcoll, use_in_list)
-            else:
-                _use_apply_on_spline_button(modifier, row, pcoll, use_in_list)
-            return
-
-        # show_on_cage or properties_context_change
-        show_on_cage_added = _show_on_cage_button(ob, modifier, row, pcoll, use_in_list)
-        context_change_added = False
-        if not show_on_cage_added:
-            context_change_added = _mesh_properties_context_change_button(modifier, row, use_in_list)
-
-        # Make icons align nicely if neither show_on_cage nor
-        # properties_context_change was added.
-        if not show_on_cage_added and not context_change_added:
-            sub = row.row(align=True)
-            sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
-
-        # #pin to last
-        _pin_to_last_buttons(ob, modifier, row, pcoll, use_in_list)
-        return
-
-
 def _modifier_visibility_buttons(modifier, layout, pcoll, use_in_list=False):
     """This handles the modifier visibility buttons (and also the
     properties_context_change button) to match the behaviour of the
@@ -396,54 +289,44 @@ def _modifier_visibility_buttons(modifier, layout, pcoll, use_in_list=False):
     # show_render and show_viewport
     sub = row.row(align=True)
 
-    is_edit_mesh_modifies = is_edit_mesh_modifier(modifier)
-
-    if is_edit_mesh_modifies:
+    # Hide visibility toggles for collision modifier as they are not
+    # used in the regular UI either (apparently can cause problems
+    # in some scenes).
+    if modifier.type == 'COLLISION':
         sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
+        sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
+    else:
+        sub.prop(modifier, "show_render", text="", emboss=not use_in_list)
+        sub.prop(modifier, "show_viewport", text="", emboss=not use_in_list)
 
-    if not modifier in list_of_frozen_modifiers and not is_edit_mesh_modifies:
-        # Hide visibility toggles for collision modifier as they are not
-        # used in the regular UI either (apparently can cause problems
-        # in some scenes).
-        ob = get_ml_active_object()
+    # show_in_editmode
+    _show_in_editmode_button(modifier, row, pcoll, use_in_list)
 
-        # show_on_cage or properties_context_change
-        show_on_cage_added = _show_on_cage_button(ob, modifier, sub, pcoll, use_in_list)
-        context_change_added = False
-        # Make icons align nicely if neither show_on_cage nor
-        # properties_context_change was added.
-        if not show_on_cage_added and not context_change_added:
-            sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
+    ob = get_ml_active_object()
 
-        if not show_on_cage_added:
-            context_change_added = _mesh_properties_context_change_button(modifier, sub, use_in_list)
-
-        # show_in_editmode
-        _show_in_editmode_button(modifier, sub, pcoll, use_in_list)
-
-        if modifier.type == 'COLLISION':
-            sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
-            sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
-        else:
-            sub.prop(modifier, "show_viewport", text="", emboss=not use_in_list)
-            sub.prop(modifier, "show_render", text="", emboss=not use_in_list)
-        
-
-        # No use_apply_on_spline or show_on_cage for lattices
-        if ob.type == 'LATTICE':
-            return
-
-        # use_apply_on_spline or properties_context_change
-        if ob.type != 'MESH':
-            if modifier.type == 'SOFT_BODY':
-                _curve_properties_context_change_button(row, pcoll, use_in_list)
-            else:
-                _use_apply_on_spline_button(modifier, row, pcoll, use_in_list)
-            return
-            
-        # #pin to last
-        _pin_to_last_buttons(ob, modifier, row, pcoll, use_in_list)
+    # No use_apply_on_spline or show_on_cage for lattices
+    if ob.type == 'LATTICE':
         return
+
+    # use_apply_on_spline or properties_context_change
+    if ob.type != 'MESH':
+        if modifier.type == 'SOFT_BODY':
+            _curve_properties_context_change_button(row, pcoll, use_in_list)
+        else:
+            _use_apply_on_spline_button(modifier, row, pcoll, use_in_list)
+        return
+
+    # show_on_cage or properties_context_change
+    show_on_cage_added = _show_on_cage_button(ob, modifier, row, pcoll, use_in_list)
+    context_change_added = False
+    if not show_on_cage_added:
+        context_change_added = _mesh_properties_context_change_button(modifier, row, use_in_list)
+
+    # Make icons align nicely if neither show_on_cage nor
+    # properties_context_change was added.
+    if not show_on_cage_added and not context_change_added:
+        sub = row.row(align=True)
+        sub.label(text="", translate=False, icon_value=empy_icon.icon_id)
 
 
 def _gizmo_object_settings(layout):
@@ -503,9 +386,7 @@ def _gizmo_object_settings(layout):
 
     layout.separator()
 
-    op = layout.operator("object.ml_select", text="Select Gizmo")
-    op.object_name = gizmo_ob.name
-    op.unhide_object = True
+    layout.operator("object.ml_select", text="Select Gizmo").object_name = gizmo_ob.name
 
     if gizmo_ob.type in {'EMPTY', 'LATTICE'} and "_Gizmo" in gizmo_ob.name:
         layout.operator("object.ml_gizmo_object_delete")
@@ -533,9 +414,9 @@ def _modifier_extras_button(context, layout, use_in_popup=False):
 
 def _modifier_menu_mesh(layout):
     col = layout.column()
-    col.label(text="Edit")
+    col.label(text="Modify")
     col.separator(factor=0.3)
-    for name, icon, mod in modifier_categories.MESH_EDIT_NAMES_ICONS_TYPES:
+    for name, icon, mod in modifier_categories.MESH_MODIFY_NAMES_ICONS_TYPES:
         col.operator("object.ml_modifier_add", text=name, icon=icon).modifier_type = mod
 
     col = layout.column()
@@ -559,9 +440,9 @@ def _modifier_menu_mesh(layout):
 
 def _modifier_menu_curve(layout):
     col = layout.column()
-    col.label(text="Edit")
+    col.label(text="Modify")
     col.separator(factor=0.3)
-    for name, icon, mod in modifier_categories.CURVE_SURFACE_TEXT_EDIT_NAMES_ICONS_TYPES:
+    for name, icon, mod in modifier_categories.CURVE_SURFACE_TEXT_MODIFY_NAMES_ICONS_TYPES:
         col.operator("object.ml_modifier_add", text=name, icon=icon).modifier_type = mod
 
     col = layout.column()
@@ -593,9 +474,9 @@ def _modifier_menu_curves(layout):
 
 def _modifier_menu_surface(layout):
     col = layout.column()
-    col.label(text="Edit")
+    col.label(text="Modify")
     col.separator(factor=0.3)
-    for name, icon, mod in modifier_categories.CURVE_SURFACE_TEXT_EDIT_NAMES_ICONS_TYPES:
+    for name, icon, mod in modifier_categories.CURVE_SURFACE_TEXT_MODIFY_NAMES_ICONS_TYPES:
         col.operator("object.ml_modifier_add", text=name, icon=icon).modifier_type = mod
 
     col = layout.column()
@@ -619,9 +500,9 @@ def _modifier_menu_surface(layout):
 
 def _modifier_menu_lattice(layout):
     col = layout.column()
-    col.label(text="Edit")
+    col.label(text="Modify")
     col.separator(factor=0.3)
-    for name, icon, mod in modifier_categories.LATTICE_EDIT_NAMES_ICONS_TYPES:
+    for name, icon, mod in modifier_categories.LATTICE_MODIFY_NAMES_ICONS_TYPES:
         col.operator("object.ml_modifier_add", text=name, icon=icon).modifier_type = mod
 
     col = layout.column()
@@ -703,27 +584,24 @@ def draw_time_props(self, context):
 
 def time_to_string(t):
     if bpy.context.scene.compact_timing == False:
-        # If modifier is disabled, show 0.0 ms
+        #if modifer is disabled, show 0.0 ms
         if t == 0.0015:
             return f'0.0 ms'
-        # Formats time in seconds to the nearest unit
-        units = {3600.: 'h', 60.: 'min', 1.: 'sec', .001: 'ms'}
+        # Formats time in seconds to the nearest sensible unit
+        units = {3600.: 'h', 60.: 'm', 1.: 's', .001: 'ms'}
         for factor in units.keys():
             if t >= factor:
-                value = f'{t/factor:.3g}'
-                if len(value) > 4:  # Ensure max 6 characters including unit
-                    value = f'{t/factor:.2g}'
-                return f'{value} {units[factor]}'
+                return f'{t/factor:.3g} {units[factor]}'
 
         if t >= 1e-4:
-            return f'{t/factor:.2g} {units[factor]}'
+            return f'{t/factor:.3g} {units[factor]}'
         else:
             return f'<0.1 ms'
     else:
         #if modifer is disabled, show 0.0s
         if t == 0.0015:
             return f'0.0s'
-        # Format it .s if under a minute with max one decimal
+        # Format it to only .s if under a minute with max one decimal
         if t < 60:
             if t < 0.1:
                 if t < 0.01:
@@ -745,10 +623,8 @@ def time_to_string(t):
 def _get_all_modifier_times():
     global prev_ms_times
 
-    obj = get_ml_active_object()
-
     depsgraph = bpy.context.view_layer.depsgraph
-    ob_eval = obj.evaluated_get(depsgraph)
+    ob_eval = bpy.context.object.evaluated_get(depsgraph)
 
     if bpy.context.scene.total_time:
         times = []
@@ -764,12 +640,11 @@ def _get_all_modifier_times():
     
 prev_ms_times = {}
 
-def _get_modifier_times(mod): # we should not call it per modifier, but only once per object
+def _get_modifier_times(mod):
     global prev_ms_times
-    obj = get_ml_active_object()
-
+    
     depsgraph = bpy.context.view_layer.depsgraph
-    ob_eval = obj.evaluated_get(depsgraph)
+    ob_eval = bpy.context.object.evaluated_get(depsgraph)
 
     ms_times = ob_eval.modifiers[mod.name].execution_time
 
@@ -778,7 +653,7 @@ def _get_modifier_times(mod): # we should not call it per modifier, but only onc
         ms_times = 0.0015
     else:
         if ms_times >= 1e-4:
-            obj_name = obj.name
+            obj_name = bpy.context.object.name
             if obj_name not in prev_ms_times:
                 prev_ms_times[obj_name] = {}
             prev_ms_times[obj_name][mod.name] = ms_times
@@ -788,106 +663,23 @@ def _get_modifier_times(mod): # we should not call it per modifier, but only onc
                 ms_times = prev_ms_times[obj_name][mod.name]
     return ms_times
     
+
 class OBJECT_UL_modifier_list(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname):
-        global list_of_frozen_modifiers
-        prefs = bpy.context.preferences.addons[base_package].preferences
-        show_times = bpy.context.scene.show_timings
-
         mod = item
-        over_100ms = False
-        if show_times:
-                text_modifier_left = _get_modifier_times(mod)
-                if text_modifier_left > 0.1:
-                    over_100ms = True
-                text_modifier_left = time_to_string(text_modifier_left)
+        if bpy.context.scene.show_timings:
+                text = _get_modifier_times(mod)
+                text = time_to_string(text)
         else:
-            text_modifier_left = ""
+            text = ""
 
-        is_edit_mesh_modifies = is_edit_mesh_modifier(mod)
-        no_edit_mesh_modifier_found = True
-
-        for i, m in enumerate(data.modifiers):
-            if m.type == 'NODES' and m.node_group:
-                if "Edit Mesh" in m.node_group.name:
-                    edit_mesh_last_index = i
-                    # get all modifers before the last edit mesh modifier
-                    list_of_frozen_modifiers = [m for m in data.modifiers[:edit_mesh_last_index] if not m.show_viewport]
-                    no_edit_mesh_modifier_found = False
-        
-        if no_edit_mesh_modifier_found:
-            list_of_frozen_modifiers = []
-
-        pcoll = get_icons()
-        empy_icon = pcoll['EMPTY_SPACE']
-        
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             if mod:       
                 row = layout.row()
                 row.alert = is_modifier_disabled(mod)
-
-                if not is_edit_mesh_modifies:
-                    row.label(text="", translate=False, icon_value=layout.icon(mod))
-                else:
-                    row.label(text="", translate=False, icon="EDITMODE_HLT")
-
-                if show_times:
-                    row_label = row.row(align=True)
-                    row_label.scale_x = 0.65
-                    if over_100ms:
-                        row_label.alert = True
-                    row_label.label(text=text_modifier_left)
-                
-                layout.prop(mod, "name", text="", emboss=False)
-                # only draw after the last edit mesh modifier
-                if is_edit_mesh_modifies and mod not in list_of_frozen_modifiers:
-                    layout.label(text="", translate=False, icon_value=empy_icon.icon_id)
-                    layout.label(text="", translate=False, icon_value=empy_icon.icon_id)
-
-                if not mod in list_of_frozen_modifiers:
-                    if prefs.classic_display_order:
-                        _classic_modifier_visibility_buttons(mod, layout, get_icons(), use_in_list=True)
-                    else:
-                        _modifier_visibility_buttons(mod, layout, get_icons(), use_in_list=True)
-                else:
-                    layout.label(text="", translate=False, icon_value=empy_icon.icon_id)
-                    layout.label(text="", translate=False, icon_value=empy_icon.icon_id)
-                    layout.enabled = False
-                    layout.label(text="", translate=False, icon="FREEZE")
-
-                    # row.label(text="", translate=False, icon="EDITMODE_HLT")
-                    # is_frozen = False
-                    # if mod in list_of_frozen_modifiers:
-                    #     row.enabled = False
-                    #     is_frozen = True
-
-                    # row.prop(mod, "name", text=text_modifier_left, emboss=False)
-
-                    # # row = layout.row(align=True)
-                    # # sub = row.row(align=True)
-                    # # sub.enabled = True  
-                    # # icon_toggle = "RESTRICT_VIEW_ON"
-                    # # if mod.show_render:
-                    # #     icon_toggle = "RESTRICT_VIEW_OFF"
-                    # pcoll = get_icons()
-                    # empy_icon = pcoll['EMPTY_SPACE']
-                    
-                    # froze_row = row.row(align=True)
-                    # froze_row.enabled = False
-                    # if is_frozen:
-                    #     # row.enabled = False
-                    #     froze_row.label(text="", translate=False, icon="FREEZE")
-                    # else:
-                        # froze_row.label(text="", translate=False, icon_value=empy_icon.icon_id)
-
-                    # future toggle mode?
-                    # sub.operator("object.toggle_edit_mesh_visibility", text="", icon=icon_toggle, emboss = False).mod_name = mod.name
-                    # sub.operator("object.edit_mesh_clear", text="", icon='X', emboss = False)
-                    
-                    # if not mod in list_of_frozen_modifiers: # does not work if clicking if not active modifier!
-                    #     sub.operator("object.edit_mesh_clear", text="", icon='X', emboss = False)
-                    # sub.label(text="", icon_value=empy_icon.icon_id)
-
+                row.label(text="", translate=False, icon_value=layout.icon(mod))
+                layout.prop(mod, "name", text=text, emboss=False)
+                _modifier_visibility_buttons(mod, layout, get_icons(), use_in_list=True)
             else:   
                 layout.label(text="", translate=False, icon_value=icon)
 
@@ -897,10 +689,10 @@ class OBJECT_UL_modifier_list(UIList):
 
 
     def register():
-        bpy.types.Scene.show_timings = bpy.props.BoolProperty(default=True)
+        bpy.types.Scene.show_timings = bpy.props.BoolProperty(default=False)
         bpy.types.Scene.compact_timing = bpy.props.BoolProperty(default=False)
         bpy.types.Scene.total_time = bpy.props.BoolProperty(default=False)
-        bpy.types.PROPERTIES_PT_options.prepend(draw_time_props)
+        bpy.types.PROPERTIES_PT_options.append(draw_time_props)
         
     def unregister():
         bpy.types.PROPERTIES_PT_options.remove(draw_time_props)
@@ -927,7 +719,7 @@ class ModifierExtrasBase:
     bl_region_type = 'WINDOW'
 
     def draw(self, context):
-        prefs = bpy.context.preferences.addons[base_package].preferences
+        prefs = bpy.context.preferences.addons["modifier_list"].preferences
         ml_props = context.window_manager.modifier_list
         pcoll = get_icons()
         ob = get_ml_active_object()
@@ -943,7 +735,6 @@ class ModifierExtrasBase:
         layout = self.layout
         layout.ui_units_x = 11
 
-        layout.operator("object.show_references_popup", icon ='PRESET')
         if layout_style_is_stack:
             if not prefs.show_batch_ops_in_main_layout_with_stack_style:
                 row = layout.row(align=True)
@@ -985,10 +776,8 @@ class ModifierExtrasBase:
                 if BLENDER_VERSION_MAJOR_POINT_MINOR >= 3.5:
                     if active_mod.type == 'NODES' and active_mod.node_group:
                         col.operator("object.geometry_nodes_move_to_nodes")
-                        if BLENDER_VERSION_MAJOR_POINT_MINOR >= 4.0:
-                            col.prop(active_mod, "show_group_selector", toggle=True)
-                        # if BLENDER_VERSION_MAJOR_POINT_MINOR >= 4.2:
-                        #     col.prop(active_mod, "use_pin_to_last", text="Pin to Last", icon='PINNED')
+                        col.operator("object.geometry_node_show_node_group")
+                    col.prop(active_mod, "object.modifiers_show_group_selector")
                     
 
                 col.operator("object.modifier_copy_to_selected").modifier = active_mod.name
@@ -1048,16 +837,11 @@ class OBJECT_PT_ml_gizmo_object_settings(Panel):
 # UI
 # =======================================================================
 
-def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=False, new_menu=False):
+def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=False):
     ob = get_ml_active_object()
     active_mod_index = ob.ml_modifier_active_index
-    if ob.modifiers:
-        active_mod = ob.modifiers[active_mod_index]
-        is_edit_mesh_modifies = is_edit_mesh_modifier(active_mod)
-        
-    prefs = bpy.context.preferences.addons[base_package].preferences
+    prefs = bpy.context.preferences.addons["modifier_list"].preferences
     pcoll = get_icons()
-
 
     if ob.modifiers:
         # This makes operators work without passing the active modifier
@@ -1072,7 +856,7 @@ def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=Fals
     # # === Modifier search and menu ===
     if prefs.show_search_and_menu_bar:
         col = layout.column()
-        _modifier_search_and_menu(col, ob, new_menu)
+        _modifier_search_and_menu(col, ob)
 
 
     # === Total Timing Text ===
@@ -1100,239 +884,160 @@ def modifiers_ui_with_list(context, layout, num_of_rows=False, use_in_popup=Fals
     sub = row.row(align=True)
     sub.scale_x = 3 if align_button_groups else 1.34
     _batch_operators(sub, pcoll)
-    # === if no modifiers on active object, text "no modifiers, add with shift a" ===   
-    if not new_menu:
-        if not ob.modifiers:
-            row = layout.row()
-            row.label(text="Add New Modifier Shift + A")
 
     sub_sub = sub.row(align=True)
     sub_sub.scale_x = 0.65 if align_button_groups else 0.85
     _modifier_extras_button(context, sub_sub, use_in_popup=use_in_popup)
 
-    global list_of_frozen_modifiers
-
     # === List manipulation ===
-    if ob.modifiers:
-        if active_mod not in list_of_frozen_modifiers and not is_edit_mesh_modifies:
-            sub = row.row(align=True)
-            sub.scale_x = 3 if align_button_groups else 1.5
-            if not align_button_groups:
-                sub.alignment = 'RIGHT'
+    sub = row.row(align=True)
+    sub.scale_x = 3 if align_button_groups else 1.5
+    if not align_button_groups:
+        sub.alignment = 'RIGHT'
 
-            move_up_icon = 'TRIA_DOWN' if prefs.reverse_list else 'TRIA_UP'
-            move_down_icon = 'TRIA_UP' if prefs.reverse_list else 'TRIA_DOWN'
+    move_up_icon = 'TRIA_DOWN' if prefs.reverse_list else 'TRIA_UP'
+    move_down_icon = 'TRIA_UP' if prefs.reverse_list else 'TRIA_DOWN'
 
-            if not prefs.reverse_list:
-                sub.operator("object.ml_modifier_move_up", icon=move_up_icon, text="")
-                sub.operator("object.ml_modifier_move_down", icon=move_down_icon, text="")
-            else:
-                sub.operator("object.ml_modifier_move_down", icon=move_down_icon, text="")
-                sub.operator("object.ml_modifier_move_up", icon=move_up_icon, text="")
+    if not prefs.reverse_list:
+        sub.operator("object.ml_modifier_move_up", icon=move_up_icon, text="")
+        sub.operator("object.ml_modifier_move_down", icon=move_down_icon, text="")
+    else:
+        sub.operator("object.ml_modifier_move_down", icon=move_down_icon, text="")
+        sub.operator("object.ml_modifier_move_up", icon=move_up_icon, text="")
 
-            sub.operator("object.ml_modifier_remove", icon='REMOVE', text="")
+    sub.operator("object.ml_modifier_remove", icon='REMOVE', text="")
 
-            col = layout.column()
-
-            # === get if the obj is a Duplicate Linked Modifiers Object ===  
-            obj = bpy.context.object
-
-            def select_linked_modifier_instance(context, object_name, layout):
-                op = layout.operator("object.ml_select", text="Select")
-                op.object_name = object_name
-                op.unhide_object = True
-
-            if obj.modifiers:
-                mod = obj.modifiers[0]
-                if len(obj.modifiers) == 1:
-                    if mod.name == "Duplicate Linked Modifiers":
-                        for item in mod.node_group.interface.items_tree:
-                            if item.in_out == "INPUT" and item.identifier == 'Socket_2': 
-                                if mod[item.identifier]:
-                                    object_name = mod[item.identifier].name
-                                    obj = bpy.data.objects[object_name]
-                                    column = layout.column()
-                                    lay = column  
-                                    row = lay.row(align = True)
-                                    row.alignment = 'LEFT'
-                                    
-                                    row.label(text="Linked Modifier Instance of: " + object_name, icon="LINKED")
-                                    select_linked_modifier_instance(context, object_name, row)
-                else:
-                    if "Duplicate Linked Modifiers" in obj.modifiers:
-                        for item in mod.node_group.interface.items_tree:
-                            if item.in_out == "INPUT" and item.identifier == 'Socket_2': 
-                                if mod[item.identifier]:
-                                    object_name = mod[item.identifier].name
-                                    obj = bpy.data.objects[object_name]
-                                    column = layout.column()
-                                    lay = column
-                                    row = lay.row(align = True)
-                                    row.alignment = 'LEFT'
-                                    row.label(text="Overridden Modifier Instance of: " + object_name, icon="UNLINKED")
-                                    select_linked_modifier_instance(context, object_name, row)
-                            if item.in_out == "INPUT" and item.identifier == 'Socket_3': 
-                                is_instance = mod[item.identifier]
-                                if is_instance:
-                                    row = layout.row(align = True)
-                                    row.alignment = 'LEFT'
-                                    row.label(text="Instanced, Modifiers may not work", icon="ERROR")
-                                    row.prop(mod, f'["{"Socket_3"}"]', text="As Instance")
-
-            #warn if the object has a object constraint modifier and switch it to stack instead of list to avoide crash and bugs
-            if ob.constraints:
-                col.label(text="Unsuported Constraint on Object! Switch to Stack to avoid bugs!", icon='ERROR')
-                prefs = bpy.context.preferences.addons[base_package].preferences
-                col.row().prop(prefs, "properties_editor_style", expand=True)
-        else:
-            row = layout.row()
-
-        # === Modifier settings ===
+    col = layout.column()
+    # === if no modifiers on active object, text "no modifiers, add with shift a" ===   
+    if not prefs.show_search_and_menu_bar:
         if not ob.modifiers:
-            return
-        active_mod = ob.modifiers[active_mod_index]
-        all_mods = modifier_categories.ALL_MODIFIERS_NAMES_ICONS_TYPES
-        active_mod_icon = next(icon for _, icon, mod in all_mods if mod == active_mod.type)
+            col.label(text="Add New Modifier Shift + A")
 
-        col = layout.column(align=True)
+    # === Modifier settings ===
+    if not ob.modifiers:
+        return
 
-        # === General settings ===
-        box = col.box()
-        
-        if prefs.show_general_settings_region:
-            row = box.row()
+    active_mod = ob.modifiers[active_mod_index]
+    all_mods = modifier_categories.ALL_MODIFIERS_NAMES_ICONS_TYPES
+    active_mod_icon = next(icon for _, icon, mod in all_mods if mod == active_mod.type)
 
-            sub = row.row()
-            if not is_edit_mesh_modifies and active_mod not in list_of_frozen_modifiers: 
-                sub.alert = is_modifier_disabled(active_mod)
-                sub.label(text="", icon=active_mod_icon)
-                sub.prop(active_mod, "name", text="")
-                if prefs.classic_display_order:
-                    _classic_modifier_visibility_buttons(active_mod, row, pcoll)
-                else:
-                    _modifier_visibility_buttons(active_mod, row, pcoll)
-            elif not is_edit_mesh_modifies:
-                sub.label(text="", icon=active_mod_icon)
-                sub.prop(active_mod, "name", text="")
-                sub.label(text="Frozen Modifier", icon='FREEZE')
-            elif is_edit_mesh_modifies and active_mod in list_of_frozen_modifiers:
-                sub.label(text="Edit Mesh Modifier", icon='EDITMODE_HLT')
-                sub.label(text="Frozen Modifier", icon='FREEZE')
-            else:
-                sub.label(text="Edit Mesh Modifier", icon='EDITMODE_HLT')
+    col = layout.column(align=True)
 
+    # === General settings ===
+    box = col.box()
 
+    if not prefs.hide_general_settings_region:
         row = box.row()
 
-        sub = row.row(align=True)
+        sub = row.row()
+        sub.alert = is_modifier_disabled(active_mod)
+        sub.label(text="", icon=active_mod_icon)
+        sub.prop(active_mod, "name", text="")
 
-        if active_mod.type == 'PARTICLE_SYSTEM':
-            ps = active_mod.particle_system
-            if ps.settings.render_type in {'COLLECTION', 'OBJECT'}:
-                sub.operator("object.duplicates_make_real", text="Convert")
-            elif ps.settings.render_type == 'PATH':
-                sub.operator("object.modifier_convert", text="Convert").modifier = active_mod.name
-        elif not is_edit_mesh_modifies and not active_mod in list_of_frozen_modifiers and prefs.show_apply_copy_pin_bar:
-            sub.scale_x = 5
-            icon = pcoll['APPLY_MODIFIER']
-            sub.operator("object.ml_modifier_apply", text="", icon_value=icon.icon_id)
+        _modifier_visibility_buttons(active_mod, row, pcoll)
 
-            if active_mod.type in modifier_categories.SUPPORT_APPLY_AS_SHAPE_KEY:
-                icon = pcoll['APPLY_MODIFIER_AS_SHAPEKEY']
-                sub.operator("object.ml_modifier_apply_as_shapekey", text="",
+    row = box.row()
+
+    sub = row.row(align=True)
+
+    if active_mod.type == 'PARTICLE_SYSTEM':
+        ps = active_mod.particle_system
+        if ps.settings.render_type in {'COLLECTION', 'OBJECT'}:
+            sub.operator("object.duplicates_make_real", text="Convert")
+        elif ps.settings.render_type == 'PATH':
+            sub.operator("object.modifier_convert", text="Convert").modifier = active_mod.name
+    else:
+        sub.scale_x = 5
+        icon = pcoll['APPLY_MODIFIER']
+        sub.operator("object.ml_modifier_apply", text="", icon_value=icon.icon_id)
+
+        if active_mod.type in modifier_categories.SUPPORT_APPLY_AS_SHAPE_KEY:
+            icon = pcoll['APPLY_MODIFIER_AS_SHAPEKEY']
+            sub.operator("object.ml_modifier_apply_as_shapekey", text="",
+                        icon_value=icon.icon_id)
+            icon = pcoll['SAVE_MODIFIER_AS_SHAPEKEY']
+            sub.operator("object.ml_modifier_save_as_shapekey", text="",
                             icon_value=icon.icon_id)
-                icon = pcoll['SAVE_MODIFIER_AS_SHAPEKEY']
-                sub.operator("object.ml_modifier_save_as_shapekey", text="",
-                                icon_value=icon.icon_id)
 
-            if active_mod.type not in modifier_categories.DONT_SUPPORT_COPY:
-                sub.operator("object.ml_modifier_copy", text="", icon='DUPLICATE')
-            
-            #if active_mod.use_pin_to_last:
-            sub.prop(active_mod, "use_pin_to_last", text="", icon='PINNED')
+        if active_mod.type not in modifier_categories.DONT_SUPPORT_COPY:
+            sub.operator("object.ml_modifier_copy", text="", icon='DUPLICATE')
 
-        # === Gizmo object settings ===
-        if ob.type in {'CURVE', 'FONT', 'LATTICE', 'MESH', 'SURFACE'} and not active_mod in list_of_frozen_modifiers and prefs.show_apply_copy_pin_bar:
-            if (active_mod.type in modifier_categories.HAVE_GIZMO_PROPERTY
-                    or active_mod.type == 'UV_PROJECT'):
-                gizmo_ob = get_gizmo_object_from_modifier(active_mod)
+    # === Gizmo object settings ===
+    if ob.type in {'CURVE', 'FONT', 'LATTICE', 'MESH', 'SURFACE'}:
+        if (active_mod.type in modifier_categories.HAVE_GIZMO_PROPERTY
+                or active_mod.type == 'UV_PROJECT'):
+            gizmo_ob = get_gizmo_object_from_modifier(active_mod)
 
-                sub = row.row(align=True)
-                sub.alignment = 'RIGHT'
-                sub.enabled = ob.library is None
+            sub = row.row(align=True)
+            sub.alignment = 'RIGHT'
+            sub.enabled = ob.library is None
 
-                if not gizmo_ob:
-                    sub_sub = sub.row()
-                    sub_sub.scale_x = 4
-                    icon = pcoll['ADD_GIZMO']
-                    sub_sub.operator("object.ml_gizmo_object_add", text="", icon_value=icon.icon_id
-                                ).modifier = active_mod.name
-                else:
-                    sub_sub = sub.row(align=True)
-                    sub_sub.scale_x = 1.2
-                    depress = not gizmo_ob.hide_viewport
-                    sub_sub.operator("object.ml_gizmo_object_toggle_visibility", text="",
-                                    icon='EMPTY_ARROWS', depress=depress)
-                    sub.popover("OBJECT_PT_ml_gizmo_object_settings", text="")
+            if not gizmo_ob:
+                sub_sub = sub.row()
+                sub_sub.scale_x = 4
+                icon = pcoll['ADD_GIZMO']
+                sub_sub.operator("object.ml_gizmo_object_add", text="", icon_value=icon.icon_id
+                            ).modifier = active_mod.name
+            else:
+                sub_sub = sub.row(align=True)
+                sub_sub.scale_x = 1.2
+                depress = not gizmo_ob.hide_viewport
+                sub_sub.operator("object.ml_gizmo_object_toggle_visibility", text="",
+                                icon='EMPTY_ARROWS', depress=depress)
+                sub.popover("OBJECT_PT_ml_gizmo_object_settings", text="")
 
-        # === Modifier specific settings ===
-        box = col.box()
-        # Disable layout for linked modifiers here manually so in custom
-        # layouts all operators/settings are greyed out.
-        box.enabled = ob.library is None
+    # === Modifier specific settings ===
+    box = col.box()
+    # Disable layout for linked modifiers here manually so in custom
+    # layouts all operators/settings are greyed out.
+    box.enabled = ob.library is None
 
-        # A column is needed here to keep the layout more compact,
-        # because in a box separators give an unnecessarily big space.
-        col = box.column()
+    # A column is needed here to keep the layout more compact,
+    # because in a box separators give an unnecessarily big space.
+    col = box.column()
 
-        # Some modifiers have an improved layout with additional settings.
-        have_custom_layout = (
-            'BOOLEAN',
-            'LATTICE'
-        )
+    # Some modifiers have an improved layout with additional settings.
+    have_custom_layout = (
+        'BOOLEAN',
+        'LATTICE'
+    )
 
-        if active_mod.type in have_custom_layout:
-            getattr(ml_modifier_layouts, active_mod.type)(col, ob, active_mod)
-        else:
-            mp = DATA_PT_modifiers(context)
-            getattr(mp, active_mod.type)(col, ob, active_mod)
+    if active_mod.type in have_custom_layout:
+        getattr(ml_modifier_layouts, active_mod.type)(col, ob, active_mod)
+    else:
+        mp = DATA_PT_modifiers(context)
+        getattr(mp, active_mod.type)(col, ob, active_mod)
 
 
 def modifiers_ui_with_stack(context, layout, use_in_popup=False):
     ob = get_ml_active_object()
-    prefs = bpy.context.preferences.addons[base_package].preferences
+    prefs = bpy.context.preferences.addons["modifier_list"].preferences
     pcoll = get_icons()
-
-    greacepencil = False
-    if ob.type == 'GREASEPENCIL':
-        greacepencil = True
 
     if ob.modifiers:
         # This makes operators work without passing the active modifier
         # to them manually as an argument.
         layout.context_pointer_set("modifier", ob.modifiers[ob.ml_modifier_active_index])
 
-    if not greacepencil: # need to make workaround for 4.3, DATA_PT_gpencil_modifiers does not exist anymore
-        # === Favourite modifiers ===
-        col = layout.column(align=True)
-        _favourite_modifier_buttons(col)
+    # === Favourite modifiers ===
+    col = layout.column(align=True)
+    _favourite_modifier_buttons(col)
 
-        # === Modifier search and menu and modifier extras menu ===
-        if prefs.show_search_and_menu_bar:
-            col = layout.column()
-            row = _modifier_search_and_menu(col, ob)
-            _modifier_extras_button(context, row, use_in_popup=use_in_popup)
+    # === Modifier search and menu and modifier extras menu ===
+    if prefs.show_search_and_menu_bar:
+        col = layout.column()
+        row = _modifier_search_and_menu(col, ob)
+        _modifier_extras_button(context, row, use_in_popup=use_in_popup)
 
 
-        # === Modifier batch operators ===
-        if prefs.show_batch_ops_in_main_layout_with_stack_style:
-            row = layout.row(align=True)
-            row.scale_x = 50
-            _batch_operators(row, pcoll, use_with_stack=True)
-        if not prefs.show_search_and_menu_bar:
-            if not ob.modifiers:
-                layout.label(text="Add New Modifier Shift + A")
-    else:
-        layout.operator("wm.call_menu", text="Add Modifier", icon='ADD').name = "OBJECT_MT_modifier_add"
+    # === Modifier batch operators ===
+    if prefs.show_batch_ops_in_main_layout_with_stack_style:
+        row = layout.row(align=True)
+        row.scale_x = 50
+        _batch_operators(row, pcoll, use_with_stack=True)
+    if not prefs.show_search_and_menu_bar:
+        if not ob.modifiers:
+            layout.label(text="Add New Modifier Shift + A")
+
     # === Modifier stack ===
     layout.template_modifiers()

@@ -3,7 +3,6 @@ import numpy as np
 import bpy
 from bpy.props import *
 from bpy.types import Operator
-from ... import __package__ as base_package
 
 from . import lattice_toggle_editmode, lattice_toggle_editmode_prop_editor
 from ..modifier_categories import CURVE_SURFACE_TEXT_DEFORM_NAMES_ICONS_TYPES
@@ -75,7 +74,6 @@ class ApplyModifier:
         items=multi_user_data_apply_method_items,
         default='NONE',
         options={'HIDDEN', 'SKIP_SAVE'})
-    delete_gizmo: BoolProperty(default=False, options={'HIDDEN', 'SKIP_SAVE'})
 
     apply_as: None
     keep_modifier_when_applying_as_shapekey = False
@@ -101,7 +99,7 @@ class ApplyModifier:
         return True
 
     def execute(self, context):
-        prefs = bpy.context.preferences.addons[base_package].preferences
+        prefs = bpy.context.preferences.addons["modifier_list"].preferences
         ob = context.active_object
         ml_active_ob = get_ml_active_object()
         ml_active_ob_init_data_name = ml_active_ob.data.name
@@ -152,7 +150,7 @@ class ApplyModifier:
             self.report({'INFO'}, "Applied modifier was not first, result may not be as expected")
 
         # Delete the gizmo object and the vertex group
-        if self.delete_gizmo or prefs.always_delete_gizmo:
+        if self.shift or prefs.always_delete_gizmo:
             if not self.keep_modifier_when_applying_as_shapekey:
                 self.delete_gizmo_and_vertex_group(context, ml_active_ob, mod_type, gizmo_ob,
                                                    vert_group)
@@ -160,11 +158,11 @@ class ApplyModifier:
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        self.delete_gizmo = self.delete_gizmo or event.shift
+        self.shift = event.shift
         ml_active_ob = get_ml_active_object()
         active_mod_index = ml_active_ob.ml_modifier_active_index
         active_mod = ml_active_ob.modifiers[active_mod_index]
-        prefs = bpy.context.preferences.addons[base_package].preferences
+        prefs = bpy.context.preferences.addons["modifier_list"].preferences
         disallow_applying_hidden_modifiers = (
             not prefs.disallow_applying_hidden_modifiers if event.alt
             else prefs.disallow_applying_hidden_modifiers)
@@ -201,12 +199,11 @@ class ApplyModifier:
         try:
             if self.apply_as == 'DATA':
                 with context.temp_override(id=ml_active_object): ### Draise - added "with" for Blender 4.0.0 compatibility
-                    bpy.ops.object.modifier_apply('INVOKE_DEFAULT', modifier=mod_name)
+                    bpy.ops.object.modifier_apply(modifier=mod_name)
             elif self.apply_as == 'SHAPE':
-                    with context.temp_override(id=ml_active_object): 
-                        bpy.ops.object.modifier_apply_as_shapekey(
-                            'INVOKE_DEFAULT', modifier=mod_name,
-                            keep_modifier=self.keep_modifier_when_applying_as_shapekey)
+                    bpy.ops.object.modifier_apply_as_shapekey(
+                        override, modifier=mod_name,
+                        keep_modifier=self.keep_modifier_when_applying_as_shapekey)
 
             if ml_active_object.type in {'CURVE', 'SURFACE'}:
                 self.curve_modifier_apply_report(mod_type)
